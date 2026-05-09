@@ -9,6 +9,9 @@ const menuItems = [
   { label: 'Almacenes', icon: '📦', path: '/almacenes' },
   { label: 'Usuarios', icon: '👥', path: '/usuarios' },
   { label: 'Roles', icon: '🔑', path: '/roles' },
+  { label: 'Layout', icon: '🗺️', path: '/layout' },
+  { label: 'Nodos', icon: '🔗', path: '/nodos' },
+  { label: 'Rutas', icon: '🔀', path: '/rutas' },
 ]
 
 export default function Layout() {
@@ -101,7 +104,7 @@ export default function Layout() {
               ☰
             </button>
             <h2 className="text-lg font-semibold text-gray-800">
-              {menuItems.find((item) => item.path === location.pathname)?.label || 'SIPRO WMS'}
+              {menuItems.find((item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))?.label || 'SIPRO WMS'}
             </h2>
           </div>
           <div className="flex items-center gap-4">

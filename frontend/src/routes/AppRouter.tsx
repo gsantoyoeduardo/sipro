@@ -8,6 +8,9 @@ import SucursalesPage from '../pages/sucursales/SucursalesPage'
 import AlmacenesPage from '../pages/almacenes/AlmacenesPage'
 import UsuariosPage from '../pages/usuarios/UsuariosPage'
 import RolesPage from '../pages/roles/RolesPage'
+import LayoutPage from '../pages/layout/LayoutPage'
+import NodosPage from '../pages/layout/NodosPage'
+import RutasPage from '../pages/layout/RutasPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -33,6 +36,9 @@ export default function AppRouter() {
           <Route path="almacenes" element={<AlmacenesPage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="roles" element={<RolesPage />} />
+          <Route path="layout" element={<LayoutPage />} />
+          <Route path="nodos" element={<NodosPage />} />
+          <Route path="rutas" element={<RutasPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

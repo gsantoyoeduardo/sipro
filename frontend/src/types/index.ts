@@ -94,3 +94,138 @@ export interface ApiListResponse<T> {
   previous: string | null
   results: T[]
 }
+
+export interface Zona {
+  idzona: string
+  idalmacen: string
+  nombre: string
+  codigo: string
+  tipo: 'recepcion' | 'almacenamiento' | 'despacho' | 'picking' | 'devoluciones'
+  x: number
+  y: number
+  ancho: number
+  alto: number
+  color: string | null
+  estado: boolean
+  pasillos?: PasilloSummary[]
+  pasillos_count?: number
+}
+
+export interface PasilloSummary {
+  idpasillo: string
+  idzona: string
+  nombre: string
+  codigo: string
+  x: number
+  y: number
+  ancho: number
+  largo: number
+  orientacion: string
+  estado: boolean
+  estantes_count?: number
+}
+
+export interface Pasillo {
+  idpasillo: string
+  idzona: string
+  nombre: string
+  codigo: string
+  x: number
+  y: number
+  ancho: number
+  largo: number
+  orientacion: 'horizontal' | 'vertical'
+  estado: boolean
+  estantes?: EstanteSummary[]
+  estantes_count?: number
+}
+
+export interface EstanteSummary {
+  idestante: string
+  idpasillo: string
+  nombre: string
+  codigo: string
+  x: number
+  y: number
+  ancho: number
+  alto: number
+  lado: string
+  cantidadniveles: number
+  estado: boolean
+  niveles_count?: number
+}
+
+export interface Estante {
+  idestante: string
+  idpasillo: string
+  nombre: string
+  codigo: string
+  x: number
+  y: number
+  ancho: number
+  alto: number
+  profundidad: number
+  lado: 'izquierda' | 'derecha'
+  cantidadniveles: number
+  estado: boolean
+  niveles?: Nivel[]
+  niveles_count?: number
+}
+
+export interface Nivel {
+  idnivel: string
+  idestante: string
+  nombre: string
+  numero: number
+  altura: number
+  estado: boolean
+}
+
+export interface Ubicacion {
+  idubicacion: string
+  idnivel: string
+  codigo: string
+  capacidadpeso: number | null
+  capacidadvolumen: number | null
+  estado_ubicacion: 'disponible' | 'ocupada' | 'reservada' | 'bloqueada'
+  x: number
+  y: number
+  estado: boolean
+}
+
+export interface Nodo {
+  idnodo: string
+  idalmacen: string
+  nombre: string
+  tipo: 'entrada' | 'salida' | 'esquina' | 'interseccion' | 'punto_recogida'
+  coordenada_x: number
+  coordenada_y: number
+  idubicacion: string | null
+  estado: boolean
+  conexiones_count?: number
+}
+
+export interface Conexion {
+  idconexion: string
+  idnodoorigen: string
+  idnododestino: string
+  distancia: number
+  tipo: 'pasillo' | 'cruce' | 'acceso'
+  bidireccional: boolean
+  estado: boolean
+  origen_nombre?: string
+  destino_nombre?: string
+}
+
+export interface RutaResult {
+  ruta: Array<{
+    idnodo: string
+    nombre: string
+    tipo: string
+    coordenada_x: number
+    coordenada_y: number
+    distancia_acumulada: number
+  }>
+  distancia_total: number
+  nodos_visitados: number
+}
