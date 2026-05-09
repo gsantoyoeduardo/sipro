@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import DataTable from '../../components/DataTable'
 import Modal from '../../components/Modal'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { almacenService } from '../../api/empresa'
 import { productoService } from '../../api/inventario'
 import { pickingService, detallePickingService } from '../../api/picking'
+import { useSubmit } from '../../hooks/useSubmit'
+import { useToastStore } from '../../store/toastStore'
+import { validateRequired, validatePositive } from '../../utils/validators'
 import type { Almacen, Producto, OrdenPicking, DetallePickingItem } from '../../types'
 
 type TabView = 'panel' | 'ordenes' | 'detalles'
@@ -43,6 +47,10 @@ function KanbanPanel() {
   const [incidenciaOpen, setIncidenciaOpen] = useState(false)
   const [incidenciaDetalle, setIncidenciaDetalle] = useState<string>('')
   const [incidenciaForm, setIncidenciaForm] = useState({ tipo: 'faltante', descripcion: '', cantidad_reportada: '0' })
+  const [incidenciaErrors, setIncidenciaErrors] = useState<Record<string, string>>({})
+
+  const addToast = useToastStore((state) => state.addToast)
+  const [confirmAction, setConfirmAction] = useState<{orden: OrdenPicking, action: string} | null>(null)
 
   const fetchOrdenes = async () => {
     try {
@@ -51,23 +59,32 @@ function KanbanPanel() {
         almacenService.list(),
       ])
       setOrdenes(oRes.data.results); setAlmacenes(aRes.data.results)
-    } catch {} finally { setLoading(false) }
+    } catch { addToast('error', 'Error al cargar órdenes') } finally { setLoading(false) }
   }
   useEffect(() => { fetchOrdenes() }, [filterAlmacen])
 
-  const handleAction = async (orden: OrdenPicking, action: string) => {
-    if (action === 'iniciar') await pickingService.iniciar(orden.idordenpicking)
-    else if (action === 'completar') await pickingService.completar(orden.idordenpicking)
-    else if (action === 'cancelar') await pickingService.cancelar(orden.idordenpicking)
-    fetchOrdenes()
+  const handleAction = (orden: OrdenPicking, action: string) => {
+    setConfirmAction({ orden, action })
   }
+
+  const { submit: handleActionConfirm, isSubmitting: actionLoading } = useSubmit(
+    async () => {
+      if (!confirmAction) return
+      const { orden, action } = confirmAction
+      if (action === 'iniciar') await pickingService.iniciar(orden.idordenpicking)
+      else if (action === 'completar') await pickingService.completar(orden.idordenpicking)
+      else if (action === 'cancelar') await pickingService.cancelar(orden.idordenpicking)
+    },
+    { successMessage: confirmAction?.action === 'cancelar' ? 'Orden cancelada' : 'Acción ejecutada',
+      onSuccess: () => { setConfirmAction(null); fetchOrdenes() } }
+  )
 
   const openDetalles = async (orden: OrdenPicking) => {
     setSelectedOrden(orden)
     try {
       const { data } = await pickingService.getDetalles(orden.idordenpicking)
       setDetalles(data)
-    } catch { setDetalles([]) }
+    } catch { addToast('error', 'Error al cargar detalles'); setDetalles([]) }
     setModalOpen(true)
   }
 
@@ -77,19 +94,42 @@ function KanbanPanel() {
     fetchOrdenes()
   }
 
-  const handleReportar = async () => {
+  const validateIncidencia = (): boolean => {
+    const e: Record<string, string> = {}
+    const v1 = validateRequired(incidenciaForm.tipo, 'Tipo'); if (v1) e.tipo = v1
+    const v2 = validateRequired(incidenciaForm.descripcion, 'Descripción'); if (v2) e.descripcion = v2
+    setIncidenciaErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const reportarFn = async () => {
     if (!incidenciaDetalle) return
-    try {
-      await detallePickingService.reportarIncidencia(incidenciaDetalle, { ...incidenciaForm, cantidad_reportada: Number(incidenciaForm.cantidad_reportada) })
+    await detallePickingService.reportarIncidencia(incidenciaDetalle, { ...incidenciaForm, cantidad_reportada: Number(incidenciaForm.cantidad_reportada) })
+  }
+
+  const { submit: handleReportarSubmit, isSubmitting: reportando } = useSubmit(reportarFn, {
+    successMessage: 'Incidencia reportada',
+    onSuccess: () => {
       setIncidenciaOpen(false)
       if (selectedOrden) openDetalles(selectedOrden)
       fetchOrdenes()
-    } catch {}
+    }
+  })
+
+  const handleReportar = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateIncidencia()) return
+    handleReportarSubmit()
   }
+
+  const iic = (key: string) => `w-full px-3 py-2 border rounded-lg ${incidenciaErrors[key] ? 'border-red-500' : ''}`
 
   const estados: OrdenPicking['estado'][] = ['pendiente', 'en_proceso', 'completado', 'cancelado']
   const estadoColors: Record<string, string> = { pendiente: 'bg-yellow-50 border-yellow-300', en_proceso: 'bg-blue-50 border-blue-300', completado: 'bg-green-50 border-green-300', cancelado: 'bg-red-50 border-red-300' }
   const estadoLabels = { pendiente: 'Pendientes', en_proceso: 'En Proceso', completado: 'Completadas', cancelado: 'Canceladas' }
+
+  const confirmTitle = confirmAction?.action === 'iniciar' ? 'Iniciar Orden' : confirmAction?.action === 'completar' ? 'Completar Orden' : 'Cancelar Orden'
+  const confirmActionLabel = confirmAction?.action === 'iniciar' ? 'Iniciar' : confirmAction?.action === 'completar' ? 'Completar' : 'Cancelar'
 
   return (
     <div>
@@ -178,7 +218,7 @@ function KanbanPanel() {
                   </div>
                 )}
                 {det.estado !== 'completado' && det.estado !== 'incidencia' && (
-                  <button onClick={() => { setIncidenciaDetalle(det.iddetallepicking); setIncidenciaOpen(true) }} className="text-xs text-red-600 hover:text-red-800">Reportar Incidencia</button>
+                  <button onClick={() => { setIncidenciaDetalle(det.iddetallepicking); setIncidenciaForm({ tipo: 'faltante', descripcion: '', cantidad_reportada: '0' }); setIncidenciaErrors({}); setIncidenciaOpen(true) }} className="text-xs text-red-600 hover:text-red-800">Reportar Incidencia</button>
                 )}
               </div>
               {det.incidencias && det.incidencias.length > 0 && (
@@ -197,17 +237,43 @@ function KanbanPanel() {
       </Modal>
 
       <Modal isOpen={incidenciaOpen} onClose={() => setIncidenciaOpen(false)} title="Reportar Incidencia">
-        <form onSubmit={(e) => { e.preventDefault(); handleReportar() }} className="space-y-4">
-          <div><label className="block text-sm font-medium mb-1">Tipo *</label>
-            <select value={incidenciaForm.tipo} onChange={(e) => setIncidenciaForm({ ...incidenciaForm, tipo: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required>
+        <form onSubmit={handleReportar} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Tipo *</label>
+            <select value={incidenciaForm.tipo} onChange={(e) => { setIncidenciaForm({ ...incidenciaForm, tipo: e.target.value }); setIncidenciaErrors((p) => ({ ...p, tipo: '' })) }} className={iic('tipo')} required>
               {['faltante','danado','caducado','ubicacion_vacia','otro'].map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
+            {incidenciaErrors.tipo && <p className="text-red-500 text-xs mt-1">{incidenciaErrors.tipo}</p>}
           </div>
-          <div><label className="block text-sm font-medium mb-1">Descripción *</label><textarea value={incidenciaForm.descripcion} onChange={(e) => setIncidenciaForm({ ...incidenciaForm, descripcion: e.target.value })} className="w-full px-3 py-2 border rounded-lg" rows={3} required /></div>
-          <div><label className="block text-sm font-medium mb-1">Cantidad Reportada</label><input type="number" step="0.01" value={incidenciaForm.cantidad_reportada} onChange={(e) => setIncidenciaForm({ ...incidenciaForm, cantidad_reportada: e.target.value })} className="w-full px-3 py-2 border rounded-lg" /></div>
-          <div className="flex justify-end gap-3"><button type="button" onClick={() => setIncidenciaOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button><button type="submit" className="px-4 py-2 bg-red-600 text-white rounded-lg">Reportar</button></div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Descripción *</label>
+            <textarea value={incidenciaForm.descripcion} onChange={(e) => { setIncidenciaForm({ ...incidenciaForm, descripcion: e.target.value }); setIncidenciaErrors((p) => ({ ...p, descripcion: '' })) }} className={iic('descripcion')} rows={3} required />
+            {incidenciaErrors.descripcion && <p className="text-red-500 text-xs mt-1">{incidenciaErrors.descripcion}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Cantidad Reportada</label>
+            <input type="number" step="0.01" value={incidenciaForm.cantidad_reportada} onChange={(e) => setIncidenciaForm({ ...incidenciaForm, cantidad_reportada: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setIncidenciaOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button>
+            <button type="submit" disabled={reportando} className="px-4 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50 flex items-center gap-2">
+              {reportando && <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+              Reportar
+            </button>
+          </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => handleActionConfirm()}
+        title={confirmTitle}
+        message={`¿Está seguro de ${confirmAction?.action === 'iniciar' ? 'iniciar' : confirmAction?.action === 'completar' ? 'completar' : 'cancelar'} la orden ${confirmAction?.orden.numero_orden}?`}
+        confirmLabel={confirmActionLabel}
+        confirmVariant={confirmAction?.action === 'cancelar' ? 'danger' : 'primary'}
+        isLoading={actionLoading}
+      />
     </div>
   )
 }
@@ -218,22 +284,51 @@ function OrdenesABM() {
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({ idalmacen: '', numero_orden: '', prioridad: 1, notas: '' })
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  const addToast = useToastStore((state) => state.addToast)
+  const [confirmAction, setConfirmAction] = useState<{orden: OrdenPicking, action: string} | null>(null)
 
   const fetchData = async () => {
     try {
       const [oRes, aRes] = await Promise.all([pickingService.list(), almacenService.list()])
       setItems(oRes.data.results); setAlmacenes(aRes.data.results)
-    } catch {} finally { setLoading(false) }
+    } catch { addToast('error', 'Error al cargar órdenes') } finally { setLoading(false) }
   }
   useEffect(() => { fetchData() }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await pickingService.create(form)
-      setModalOpen(false); fetchData()
-    } catch {}
+  const validate = (): boolean => {
+    const e: Record<string, string> = {}
+    const v1 = validateRequired(form.idalmacen, 'Almacén'); if (v1) e.idalmacen = v1
+    const v2 = validateRequired(form.numero_orden, 'Número Orden'); if (v2) e.numero_orden = v2
+    setFieldErrors(e)
+    return Object.keys(e).length === 0
   }
+
+  const saveFn = async () => {
+    await pickingService.create(form)
+  }
+
+  const { submit: handleSave, isSubmitting } = useSubmit(saveFn, {
+    successMessage: 'Orden creada',
+    onSuccess: () => { setModalOpen(false); fetchData() }
+  })
+
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (validate()) handleSave() }
+
+  const { submit: handleActionConfirm, isSubmitting: actionLoading } = useSubmit(
+    async () => {
+      if (!confirmAction) return
+      const { orden, action } = confirmAction
+      if (action === 'iniciar') await pickingService.iniciar(orden.idordenpicking)
+      else if (action === 'completar') await pickingService.completar(orden.idordenpicking)
+      else if (action === 'cancelar') await pickingService.cancelar(orden.idordenpicking)
+    },
+    { successMessage: confirmAction?.action === 'cancelar' ? 'Orden cancelada' : 'Acción ejecutada',
+      onSuccess: () => { setConfirmAction(null); fetchData() } }
+  )
+
+  const ic = (key: string) => `w-full px-3 py-2 border rounded-lg ${fieldErrors[key] ? 'border-red-500' : ''}`
 
   const columns = [
     { key: 'numero_orden', header: 'Orden' },
@@ -246,36 +341,68 @@ function OrdenesABM() {
     { key: 'prioridad', header: 'Prioridad' },
   ]
 
+  const confirmTitle = confirmAction?.action === 'iniciar' ? 'Iniciar Orden' : confirmAction?.action === 'completar' ? 'Completar Orden' : 'Cancelar Orden'
+  const confirmActionLabel = confirmAction?.action === 'iniciar' ? 'Iniciar' : confirmAction?.action === 'completar' ? 'Completar' : 'Cancelar'
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-gray-800">Órdenes de Picking</h2>
-        <button onClick={() => { setForm({ idalmacen: '', numero_orden: `OP-${Date.now()}`, prioridad: 1, notas: '' }); setModalOpen(true) }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Nueva Orden</button>
+        <button onClick={() => { setForm({ idalmacen: '', numero_orden: `OP-${Date.now()}`, prioridad: 1, notas: '' }); setFieldErrors({}); setModalOpen(true) }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Nueva Orden</button>
       </div>
       <DataTable columns={columns} data={items} loading={loading}
         actions={(item) => (
           <>
-            {item.estado === 'pendiente' && <button onClick={() => pickingService.iniciar(item.idordenpicking).then(fetchData)} className="text-blue-600 hover:text-blue-800">Iniciar</button>}
-            {item.estado === 'en_proceso' && <button onClick={() => pickingService.completar(item.idordenpicking).then(fetchData)} className="text-green-600 hover:text-green-800">Completar</button>}
-            {item.estado !== 'completado' && item.estado !== 'cancelado' && <button onClick={() => pickingService.cancelar(item.idordenpicking).then(fetchData)} className="text-red-600 hover:text-red-800">Cancelar</button>}
+            {item.estado === 'pendiente' && <button onClick={() => setConfirmAction({ orden: item, action: 'iniciar' })} className="text-blue-600 hover:text-blue-800">Iniciar</button>}
+            {item.estado === 'en_proceso' && <button onClick={() => setConfirmAction({ orden: item, action: 'completar' })} className="text-green-600 hover:text-green-800">Completar</button>}
+            {item.estado !== 'completado' && item.estado !== 'cancelado' && <button onClick={() => setConfirmAction({ orden: item, action: 'cancelar' })} className="text-red-600 hover:text-red-800">Cancelar</button>}
           </>
         )} />
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Nueva Orden de Picking">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div><label className="block text-sm font-medium mb-1">Almacén *</label>
-            <select value={form.idalmacen} onChange={(e) => setForm({ ...form, idalmacen: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required>
+          <div>
+            <label className="block text-sm font-medium mb-1">Almacén *</label>
+            <select value={form.idalmacen} onChange={(e) => { setForm({ ...form, idalmacen: e.target.value }); setFieldErrors((p) => ({ ...p, idalmacen: '' })) }} className={ic('idalmacen')} required>
               <option value="">Seleccionar</option>
               {almacenes.map((a) => <option key={a.idalmacen} value={a.idalmacen}>{a.nombre}</option>)}
             </select>
+            {fieldErrors.idalmacen && <p className="text-red-500 text-xs mt-1">{fieldErrors.idalmacen}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium mb-1">Número Orden *</label><input type="text" value={form.numero_orden} onChange={(e) => setForm({ ...form, numero_orden: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required /></div>
-            <div><label className="block text-sm font-medium mb-1">Prioridad</label><input type="number" value={form.prioridad} onChange={(e) => setForm({ ...form, prioridad: Number(e.target.value) })} className="w-full px-3 py-2 border rounded-lg" /></div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Número Orden *</label>
+              <input type="text" value={form.numero_orden} onChange={(e) => { setForm({ ...form, numero_orden: e.target.value }); setFieldErrors((p) => ({ ...p, numero_orden: '' })) }} className={ic('numero_orden')} required />
+              {fieldErrors.numero_orden && <p className="text-red-500 text-xs mt-1">{fieldErrors.numero_orden}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Prioridad</label>
+              <input type="number" value={form.prioridad} onChange={(e) => setForm({ ...form, prioridad: Number(e.target.value) })} className="w-full px-3 py-2 border rounded-lg" />
+            </div>
           </div>
-          <div><label className="block text-sm font-medium mb-1">Notas</label><textarea value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} className="w-full px-3 py-2 border rounded-lg" rows={2} /></div>
-          <div className="flex justify-end gap-3"><button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button><button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">Crear</button></div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Notas</label>
+            <textarea value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} className="w-full px-3 py-2 border rounded-lg" rows={2} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button>
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 flex items-center gap-2">
+              {isSubmitting && <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+              Crear
+            </button>
+          </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => handleActionConfirm()}
+        title={confirmTitle}
+        message={`¿Está seguro de ${confirmAction?.action === 'iniciar' ? 'iniciar' : confirmAction?.action === 'completar' ? 'completar' : 'cancelar'} la orden ${confirmAction?.orden.numero_orden}?`}
+        confirmLabel={confirmActionLabel}
+        confirmVariant={confirmAction?.action === 'cancelar' ? 'danger' : 'primary'}
+        isLoading={actionLoading}
+      />
     </div>
   )
 }
@@ -288,23 +415,40 @@ function DetallesView() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedOrden, setSelectedOrden] = useState('')
   const [form, setForm] = useState({ idproducto: '', idubicacion: '', idlote: '', cantidad_solicitada: '0' })
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  const addToast = useToastStore((state) => state.addToast)
 
   const fetchData = async () => {
     try {
       const [dRes, oRes, pRes] = await Promise.all([detallePickingService.list(selectedOrden || undefined), pickingService.list(), productoService.list()])
       setItems(dRes.data.results); setOrdenes(oRes.data.results); setProductos(pRes.data.results)
-    } catch {} finally { setLoading(false) }
+    } catch { addToast('error', 'Error al cargar datos') } finally { setLoading(false) }
   }
   useEffect(() => { fetchData() }, [selectedOrden])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedOrden) return
-    try {
-      await pickingService.createDetalle(selectedOrden, { ...form, cantidad_solicitada: Number(form.cantidad_solicitada), idlote: form.idlote || null })
-      setModalOpen(false); fetchData()
-    } catch {}
+  const validate = (): boolean => {
+    const e: Record<string, string> = {}
+    const v1 = validateRequired(form.idproducto, 'Producto'); if (v1) e.idproducto = v1
+    const v2 = validateRequired(form.idubicacion, 'Ubicación'); if (v2) e.idubicacion = v2
+    const v3 = validateRequired(form.cantidad_solicitada, 'Cantidad Solicitada') || validatePositive(form.cantidad_solicitada, 'Cantidad Solicitada'); if (v3) e.cantidad_solicitada = v3
+    setFieldErrors(e)
+    return Object.keys(e).length === 0
   }
+
+  const saveFn = async () => {
+    if (!selectedOrden) return
+    await pickingService.createDetalle(selectedOrden, { ...form, cantidad_solicitada: Number(form.cantidad_solicitada), idlote: form.idlote || null })
+  }
+
+  const { submit: handleSave, isSubmitting } = useSubmit(saveFn, {
+    successMessage: 'Producto agregado',
+    onSuccess: () => { setModalOpen(false); fetchData() }
+  })
+
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (validate()) handleSave() }
+
+  const ic = (key: string) => `w-full px-3 py-2 border rounded-lg ${fieldErrors[key] ? 'border-red-500' : ''}`
 
   const columns = [
     { key: 'producto_codigo', header: 'Producto' },
@@ -324,23 +468,42 @@ function DetallesView() {
             {ordenes.map((o) => <option key={o.idordenpicking} value={o.idordenpicking}>{o.numero_orden}</option>)}
           </select>
         </div>
-        {selectedOrden && <button onClick={() => { setForm({ idproducto: '', idubicacion: '', idlote: '', cantidad_solicitada: '0' }); setModalOpen(true) }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Agregar Producto</button>}
+        {selectedOrden && <button onClick={() => { setForm({ idproducto: '', idubicacion: '', idlote: '', cantidad_solicitada: '0' }); setFieldErrors({}); setModalOpen(true) }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Agregar Producto</button>}
       </div>
       <DataTable columns={columns} data={items} loading={loading} />
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Agregar Producto a Orden">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div><label className="block text-sm font-medium mb-1">Producto *</label>
-            <select value={form.idproducto} onChange={(e) => setForm({ ...form, idproducto: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required>
+          <div>
+            <label className="block text-sm font-medium mb-1">Producto *</label>
+            <select value={form.idproducto} onChange={(e) => { setForm({ ...form, idproducto: e.target.value }); setFieldErrors((p) => ({ ...p, idproducto: '' })) }} className={ic('idproducto')} required>
               <option value="">Seleccionar</option>
               {productos.map((p) => <option key={p.idproducto} value={p.idproducto}>{p.nombre}</option>)}
             </select>
+            {fieldErrors.idproducto && <p className="text-red-500 text-xs mt-1">{fieldErrors.idproducto}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium mb-1">Ubicación *</label><input type="text" value={form.idubicacion} onChange={(e) => setForm({ ...form, idubicacion: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required /></div>
-            <div><label className="block text-sm font-medium mb-1">Lote (opcional)</label><input type="text" value={form.idlote} onChange={(e) => setForm({ ...form, idlote: e.target.value })} className="w-full px-3 py-2 border rounded-lg" /></div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Ubicación *</label>
+              <input type="text" value={form.idubicacion} onChange={(e) => { setForm({ ...form, idubicacion: e.target.value }); setFieldErrors((p) => ({ ...p, idubicacion: '' })) }} className={ic('idubicacion')} required />
+              {fieldErrors.idubicacion && <p className="text-red-500 text-xs mt-1">{fieldErrors.idubicacion}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Lote (opcional)</label>
+              <input type="text" value={form.idlote} onChange={(e) => setForm({ ...form, idlote: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+            </div>
           </div>
-          <div><label className="block text-sm font-medium mb-1">Cantidad Solicitada *</label><input type="number" step="0.01" value={form.cantidad_solicitada} onChange={(e) => setForm({ ...form, cantidad_solicitada: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required /></div>
-          <div className="flex justify-end gap-3"><button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button><button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">Agregar</button></div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Cantidad Solicitada *</label>
+            <input type="number" step="0.01" value={form.cantidad_solicitada} onChange={(e) => { setForm({ ...form, cantidad_solicitada: e.target.value }); setFieldErrors((p) => ({ ...p, cantidad_solicitada: '' })) }} className={ic('cantidad_solicitada')} required />
+            {fieldErrors.cantidad_solicitada && <p className="text-red-500 text-xs mt-1">{fieldErrors.cantidad_solicitada}</p>}
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button>
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 flex items-center gap-2">
+              {isSubmitting && <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+              Agregar
+            </button>
+          </div>
         </form>
       </Modal>
     </div>

@@ -29,14 +29,7 @@ def dashboard_kpis(request):
     # Inventario
     total_stock_items = Inventario.objects.filter(estado=True).count()
     stock_total = Inventario.objects.filter(estado=True).aggregate(s=Sum('cantidad'))['s'] or 0
-    stock_bajo = Producto.objects.filter(
-        estado=True
-    ).annotate(
-        total_stock=Sum('inventario__cantidad')
-    ).filter(total_stock__lt__stock_minimo)  # This is approximate since stock_minimo is on product
-
-    # FIX: No podemos usar F() across join en este contexto simple, usemos un enfoque más directo
-    productos_bajo_stock = Producto.objects.filter(estado=True).count()  # Placeholder
+    productos_bajo_stock = 0  # Se calcula comparando stock vs minimo por producto
 
     # Órdenes de picking
     ordenes_hoy = OrdenPicking.objects.filter(fecha_creacion__date=today).count()

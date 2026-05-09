@@ -8,7 +8,7 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-dev-key-change
 
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0').split(',')
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0,backend').split(',')
 
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -33,6 +33,8 @@ LOCAL_APPS = [
     'apps.inventario',
     'apps.picking',
     'apps.transferencia',
+    'apps.dashboard',
+    'apps.seed',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -132,4 +134,4 @@ REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
     'user': '1000/hour',
 }
 
-CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='').split(',')
+CSRF_TRUSTED_ORIGINS = [origin for origin in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if origin]

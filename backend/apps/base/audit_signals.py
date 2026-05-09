@@ -5,6 +5,7 @@ from django.db.models.signals import post_save, pre_save, pre_delete
 from django.dispatch import receiver
 
 AUDIT_MAP = {}
+AUDIT_ENABLED = True
 
 
 def register_audit(model_class, audit_model_class):
@@ -39,7 +40,7 @@ def get_client_ip(request):
 
 @receiver(pre_save)
 def capture_pre_save_state(sender, instance, **kwargs):
-    if sender not in AUDIT_MAP or not instance.pk:
+    if not AUDIT_ENABLED or sender not in AUDIT_MAP or not instance.pk:
         return
     try:
         old = sender.objects.get(pk=instance.pk)
@@ -50,7 +51,7 @@ def capture_pre_save_state(sender, instance, **kwargs):
 
 @receiver(post_save)
 def audit_post_save(sender, instance, created, **kwargs):
-    if sender not in AUDIT_MAP:
+    if not AUDIT_ENABLED or sender not in AUDIT_MAP:
         return
     audit_model = AUDIT_MAP[sender]
     new_data = serialize_instance(instance)
@@ -80,7 +81,7 @@ def audit_post_save(sender, instance, created, **kwargs):
 
 @receiver(pre_delete)
 def audit_pre_delete(sender, instance, **kwargs):
-    if sender not in AUDIT_MAP:
+    if not AUDIT_ENABLED or sender not in AUDIT_MAP:
         return
     audit_model = AUDIT_MAP[sender]
     old_data = serialize_instance(instance)
