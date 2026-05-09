@@ -43,7 +43,7 @@ class Usuario(AuditableBaseModel, AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['correo', 'nombres', 'apellidos']
 
     class Meta:
-        db_table = 'public"."usuario'
+        db_table = 'usuario'
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
 
@@ -57,7 +57,7 @@ class Rol(AuditableBaseModel):
     descripcion = models.TextField(null=True, blank=True)
 
     class Meta:
-        db_table = 'public"."rol'
+        db_table = 'rol'
         verbose_name = 'Rol'
         verbose_name_plural = 'Roles'
 
@@ -72,7 +72,7 @@ class Permiso(AuditableBaseModel):
     descripcion = models.TextField(null=True, blank=True)
 
     class Meta:
-        db_table = 'public"."permiso'
+        db_table = 'permiso'
         verbose_name = 'Permiso'
         verbose_name_plural = 'Permisos'
 
@@ -86,7 +86,7 @@ class UsuarioRol(AuditableBaseModel):
     idrol = models.ForeignKey(Rol, on_delete=models.CASCADE, db_column='idrol')
 
     class Meta:
-        db_table = 'public"."usuariorol'
+        db_table = 'usuariorol'
         verbose_name = 'Usuario - Rol'
         verbose_name_plural = 'Usuarios - Roles'
         unique_together = ('idusuario', 'idrol')
@@ -98,7 +98,7 @@ class RolPermiso(AuditableBaseModel):
     idpermiso = models.ForeignKey(Permiso, on_delete=models.CASCADE, db_column='idpermiso')
 
     class Meta:
-        db_table = 'public"."rolpermiso'
+        db_table = 'rolpermiso'
         verbose_name = 'Rol - Permiso'
         verbose_name_plural = 'Roles - Permisos'
         unique_together = ('idrol', 'idpermiso')
@@ -117,6 +117,6 @@ class SesionUsuario(AuditableBaseModel):
     activa = models.BooleanField(default=True)
 
     class Meta:
-        db_table = 'public"."sesionusuario'
+        db_table = 'sesionusuario'
         verbose_name = 'Sesión de Usuario'
         verbose_name_plural = 'Sesiones de Usuarios'

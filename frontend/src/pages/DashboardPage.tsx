@@ -1,27 +1,27 @@
 import { useAuthStore } from '../store/authStore'
 
 export default function DashboardPage() {
-  const logout = useAuthStore((state) => state.logout)
+  const user = useAuthStore((state) => state.user)
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-800">SIPRO WMS</h1>
-          <button
-            onClick={logout}
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
-      </header>
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-700">Dashboard</h2>
-          <p className="text-gray-500 mt-2">Bienvenido a SIPRO WMS</p>
-        </div>
-      </main>
+    <div>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">
+        Bienvenido, {user?.nombres}
+      </h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: 'Empresas', value: '—', color: 'bg-blue-500' },
+          { label: 'Sucursales', value: '—', color: 'bg-green-500' },
+          { label: 'Almacenes', value: '—', color: 'bg-yellow-500' },
+          { label: 'Usuarios', value: '—', color: 'bg-purple-500' },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white rounded-lg shadow p-6">
+            <div className={`w-10 h-10 rounded-lg ${stat.color} mb-4`} />
+            <p className="text-sm text-gray-500">{stat.label}</p>
+            <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

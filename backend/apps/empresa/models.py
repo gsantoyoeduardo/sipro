@@ -14,7 +14,7 @@ class Empresa(AuditableBaseModel):
     fechacreacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'public"."empresa'
+        db_table = 'empresa'
         verbose_name = 'Empresa'
         verbose_name_plural = 'Empresas'
 
@@ -32,7 +32,7 @@ class Sucursal(AuditableBaseModel):
     fechacreacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'public"."sucursal'
+        db_table = 'sucursal'
         verbose_name = 'Sucursal'
         verbose_name_plural = 'Sucursales'
         unique_together = ('idempresa', 'codigo')
@@ -53,7 +53,7 @@ class Almacen(AuditableBaseModel):
     fechacreacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'public"."almacen'
+        db_table = 'almacen'
         verbose_name = 'Almacén'
         verbose_name_plural = 'Almacenes'
         unique_together = ('idsucursal', 'codigo')
