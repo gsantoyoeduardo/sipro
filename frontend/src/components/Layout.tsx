@@ -13,6 +13,8 @@ const menuItems = [
   { label: 'Nodos', icon: '🔗', path: '/nodos' },
   { label: 'Rutas', icon: '🔀', path: '/rutas' },
   { label: 'Inventario', icon: '📋', path: '/inventario' },
+  { label: 'Picking', icon: '✅', path: '/picking' },
+  { label: 'Transfer.', icon: '🚚', path: '/transferencias' },
 ]
 
 export default function Layout() {

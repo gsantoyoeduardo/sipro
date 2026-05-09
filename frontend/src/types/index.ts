@@ -326,3 +326,90 @@ export interface PickingResult {
   faltante: number
   completo: boolean
 }
+
+export interface OrdenPicking {
+  idordenpicking: string
+  idalmacen: string
+  idusuario: string | null
+  numero_orden: string
+  estado: 'pendiente' | 'en_proceso' | 'completado' | 'cancelado'
+  prioridad: number
+  fecha_creacion: string
+  fecha_inicio: string | null
+  fecha_completado: string | null
+  notas: string | null
+  detalles?: DetallePickingItem[]
+  usuario_nombre?: string | null
+  almacen_nombre?: string
+  total_productos?: number
+  total_pickeado?: number
+}
+
+export interface DetallePickingItem {
+  iddetallepicking: string
+  idorden: string
+  idproducto: string
+  idubicacion: string
+  idlote: string | null
+  cantidad_solicitada: number
+  cantidad_pickeada: number
+  estado: 'pendiente' | 'en_proceso' | 'completado' | 'incidencia'
+  producto_codigo?: string
+  producto_nombre?: string
+  ubicacion_codigo?: string
+  lote_numero?: string | null
+  incidencias?: IncidenciaItem[]
+}
+
+export interface IncidenciaItem {
+  idincidencia: string
+  iddetalle: string
+  idusuario: string
+  tipo: 'faltante' | 'danado' | 'caducado' | 'ubicacion_vacia' | 'otro'
+  descripcion: string
+  cantidad_reportada: number
+  fecha_reporte: string
+  resuelta: boolean
+  usuario_nombre?: string
+}
+
+export interface Transferencia {
+  idtransferencia: string
+  idalmacen_origen: string
+  idalmacen_destino: string
+  idusuario: string | null
+  numero_transferencia: string
+  estado: 'pendiente' | 'en_transito' | 'completado' | 'rechazado'
+  fecha_creacion: string
+  fecha_envio: string | null
+  fecha_recepcion: string | null
+  notas: string | null
+  detalles?: DetalleTransferenciaItem[]
+  origen_nombre?: string
+  destino_nombre?: string
+  usuario_nombre?: string | null
+  total_items?: number
+}
+
+export interface DetalleTransferenciaItem {
+  iddetalletransferencia: string
+  idtransferencia: string
+  idproducto: string
+  idlote: string | null
+  cantidad: number
+  producto_codigo?: string
+  producto_nombre?: string
+  lote_numero?: string | null
+}
+
+export interface DashboardKPI {
+  entidades: {
+    empresas: number; sucursales: number; almacenes: number; usuarios: number
+    productos: number; zonas: number; nodos: number
+  }
+  inventario: { stock_items: number; stock_total: number; productos_bajo_stock: number }
+  picking: { ordenes_hoy: number; ordenes_pendientes: number; ordenes_en_proceso: number; ordenes_completadas_hoy: number; ordenes_mes: number }
+  transferencias: { pendientes: number; en_transito: number; transferencias_mes: number }
+  movimientos_mes: { entradas: number; salidas: number; ajustes: number }
+  ultimos_movimientos: Array<{ tipo: string; cantidad: number; producto: string; fecha: string }>
+}
