@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, developer]
+  push:
+    branches: [developer]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: sipro
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements/dev.txt
+
+      - name: Lint with ruff
+        run: ruff check backend/
+
+      - name: Run tests
+        run: pytest backend/
+        env:
+          DB_HOST: localhost
+          DB_NAME: sipro
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432
+          DJANGO_SETTINGS_MODULE: config.settings.dev
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: frontend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend

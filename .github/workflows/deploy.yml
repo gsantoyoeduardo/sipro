@@ -1,0 +1,35 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and push Docker images
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+          docker compose -f docker-compose.yml build
+          docker tag sipro-backend:latest $DOCKER_USERNAME/sipro-backend:latest
+          docker tag sipro-frontend:latest $DOCKER_USERNAME/sipro-frontend:latest
+          docker push $DOCKER_USERNAME/sipro-backend:latest
+          docker push $DOCKER_USERNAME/sipro-frontend:latest
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/sipro
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker system prune -f
