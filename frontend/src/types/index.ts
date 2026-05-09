@@ -229,3 +229,100 @@ export interface RutaResult {
   distancia_total: number
   nodos_visitados: number
 }
+
+export interface Categoria {
+  idcategoria: string
+  nombre: string
+  descripcion: string | null
+  idcategoriapadre: string | null
+  estado: boolean
+  subcategorias?: Categoria[]
+}
+
+export interface Producto {
+  idproducto: string
+  idcategoria: string
+  categoria_nombre?: string
+  codigo: string
+  nombre: string
+  descripcion: string | null
+  unidad_medida: string
+  peso: number | null
+  volumen: number | null
+  precio_costo: number | null
+  precio_venta: number | null
+  stock_minimo: number
+  stock_maximo: number
+  maneja_lotes: boolean
+  fechacreacion: string
+  estado: boolean
+  stock_total?: number
+}
+
+export interface Lote {
+  idlote: string
+  idproducto: string
+  producto_codigo?: string
+  numero_lote: string
+  fecha_produccion: string | null
+  fecha_vencimiento: string | null
+  fecha_recepcion: string
+  cantidad_inicial: number
+  cantidad_actual: number
+  estado: boolean
+}
+
+export interface InventarioItem {
+  idinventario: string
+  idproducto: string
+  idlote: string | null
+  idubicacion: string
+  producto_codigo?: string
+  producto_nombre?: string
+  lote_numero?: string | null
+  ubicacion_codigo?: string
+  cantidad: number
+  fecha_ultimo_conteo: string
+  estado: boolean
+}
+
+export interface KardexItem {
+  idkardex: string
+  idproducto: string
+  idlote: string | null
+  idubicacion: string | null
+  producto_codigo?: string
+  lote_numero?: string | null
+  ubicacion_codigo?: string | null
+  usuario_nombre?: string | null
+  tipo_movimiento: 'entrada' | 'salida' | 'ajuste' | 'transferencia'
+  cantidad: number
+  saldo_anterior: number
+  saldo_nuevo: number
+  fecha_movimiento: string
+  referencia: string | null
+  estado: boolean
+}
+
+export interface PickingResult {
+  producto: {
+    idproducto: string
+    codigo: string
+    nombre: string
+    unidad_medida: string
+    maneja_lotes: boolean
+  }
+  estrategia: string
+  cantidad_requerida: number
+  picking: Array<{
+    lote: string | null
+    lote_numero: string | null
+    vencimiento: string | null
+    ubicacion: string
+    ubicacion_codigo: string
+    cantidad_pickear: number
+  }>
+  total_pickeable: number
+  faltante: number
+  completo: boolean
+}

@@ -11,6 +11,7 @@ import RolesPage from '../pages/roles/RolesPage'
 import LayoutPage from '../pages/layout/LayoutPage'
 import NodosPage from '../pages/layout/NodosPage'
 import RutasPage from '../pages/layout/RutasPage'
+import InventarioPage from '../pages/inventario/InventarioPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -39,6 +40,7 @@ export default function AppRouter() {
           <Route path="layout" element={<LayoutPage />} />
           <Route path="nodos" element={<NodosPage />} />
           <Route path="rutas" element={<RutasPage />} />
+          <Route path="inventario" element={<InventarioPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -12,6 +12,7 @@ const menuItems = [
   { label: 'Layout', icon: '🗺️', path: '/layout' },
   { label: 'Nodos', icon: '🔗', path: '/nodos' },
   { label: 'Rutas', icon: '🔀', path: '/rutas' },
+  { label: 'Inventario', icon: '📋', path: '/inventario' },
 ]
 
 export default function Layout() {
