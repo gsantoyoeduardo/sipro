@@ -1,3 +1,9 @@
+﻿/**
+ * Componente ConfirmDialog.
+ * Di\u00e1logo de confirmaci\u00f3n construido sobre Modal, utilizado para
+ * acciones destructivas (eliminar, desactivar, etc.). Muestra un mensaje
+ * y botones de Cancelar / Confirmar con variante de color (danger o primary).
+ */
 import Modal from './Modal'
 
 interface ConfirmDialogProps {
@@ -23,7 +29,9 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
+      {/* Mensaje de confirmaci\u00f3n */}
       <p className="text-sm text-gray-600 mb-6">{message}</p>
+      {/* Botones de acci\u00f3n */}
       <div className="flex justify-end gap-3">
         <button
           onClick={onClose}
@@ -35,12 +43,9 @@ export default function ConfirmDialog({
         <button
           onClick={onConfirm}
           disabled={isLoading}
-          className={`px-4 py-2 text-sm rounded-lg text-white disabled:opacity-50 flex items-center gap-2 ${
-            confirmVariant === 'danger'
-              ? 'bg-red-600 hover:bg-red-700'
-              : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+          className={px-4 py-2 text-sm rounded-lg text-white disabled:opacity-50 flex items-center gap-2 }
         >
+          {/* Spinner durante la carga */}
           {isLoading && (
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />

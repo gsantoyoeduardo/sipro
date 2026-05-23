@@ -1,3 +1,9 @@
+﻿/**
+ * Componente gen\u00e9rico DataTable.
+ * Renderiza una tabla HTML con soporte para columnas personalizadas,
+ * renderizaci\u00f3n personalizada de celdas, acciones por fila,
+ * estado de carga y mensaje de vac\u00edo.
+ */
 interface Column<T> {
   key: string
   header: string
@@ -21,6 +27,7 @@ export default function DataTable<T>({
   actions,
   emptyMessage = 'No hay datos disponibles',
 }: DataTableProps<T>) {
+  // Muestra un spinner mientras se cargan los datos
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -29,6 +36,7 @@ export default function DataTable<T>({
     )
   }
 
+  // Muestra mensaje cuando no hay datos
   if (data.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">{emptyMessage}</div>
@@ -38,6 +46,7 @@ export default function DataTable<T>({
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
+        {/* Cabecera de la tabla con los nombres de columna */}
         <thead className="bg-gray-50">
           <tr>
             {columns.map((col) => (
@@ -55,11 +64,12 @@ export default function DataTable<T>({
             )}
           </tr>
         </thead>
+        {/* Cuerpo de la tabla con los datos */}
         <tbody className="bg-white divide-y divide-gray-200">
           {data.map((item, idx) => (
             <tr
               key={idx}
-              className={`hover:bg-gray-50 ${onRowClick ? 'cursor-pointer' : ''}`}
+              className={hover:bg-gray-50 }
               onClick={() => onRowClick?.(item)}
             >
               {columns.map((col) => (

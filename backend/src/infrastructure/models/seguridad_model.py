@@ -1,3 +1,10 @@
+"""
+Modelos del módulo de Seguridad.
+
+Define la gestión de usuarios, roles, permisos y sesiones del sistema.
+Utiliza un modelo de usuario personalizado basado en AbstractBaseUser.
+"""
+
 import uuid
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
@@ -5,6 +12,11 @@ from src.infrastructure.models.base_model import AuditableBaseModel
 
 
 class UsuarioManager(BaseUserManager):
+    """Manager personalizado para el modelo Usuario.
+
+    Proporciona métodos para crear usuarios regulares y superusuarios
+    utilizando el campo 'usuario' como identificador principal (USERNAME_FIELD).
+    """
     def create_user(self, usuario, correo, password=None, **extra_fields):
         if not usuario:
             raise ValueError('El nombre de usuario es obligatorio')
@@ -23,6 +35,25 @@ class UsuarioManager(BaseUserManager):
 
 
 class Usuario(AuditableBaseModel, AbstractBaseUser, PermissionsMixin):
+    """Modelo personalizado de usuario para autenticación y autorización.
+
+    Hereda de AbstractBaseUser (manejo de contraseñas) y PermissionsMixin
+    (permisos y grupos de Django), además de AuditableBaseModel (auditoría).
+
+    Relación FK:
+        idempresa -> Empresa (opcional): Empresa a la que pertenece el usuario.
+            Los administradores del sistema pueden no tener empresa asociada.
+
+    Campos más importantes:
+        tipo_usuario: Rol del sistema (admin_sistema, admin_empresa, operador).
+        usuario: Nombre de usuario para iniciar sesión (único).
+        correo: Correo electrónico (único).
+        is_staff: Acceso al panel de administración de Django.
+        is_active: Indica si la cuenta está activa.
+
+    USERNAME_FIELD: Define 'usuario' como campo de autenticación principal.
+    REQUIRED_FIELDS: Campos requeridos adicionales al crear un superusuario.
+    """
     TIPO_USUARIO_CHOICES = [
         ('admin_sistema', 'Administrador SIPRO'),
         ('admin_empresa', 'Administrador de Empresa'),
@@ -50,8 +81,8 @@ class Usuario(AuditableBaseModel, AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['correo', 'nombres', 'apellidos']
 
     class Meta:
-        app_label = 'seguridad'
-        db_table = 'usuario'
+        app_label = 'seguridad'  # Etiqueta de la aplicación Django
+        db_table = 'usuario'  # Nombre físico de la tabla en la base de datos
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
 
@@ -60,6 +91,16 @@ class Usuario(AuditableBaseModel, AbstractBaseUser, PermissionsMixin):
 
 
 class Rol(AuditableBaseModel):
+    """Representa un rol o perfil de acceso en el sistema.
+
+    Relación FK:
+        idempresa -> Empresa (opcional): Rol asociado a una empresa específica.
+            Los roles globales del sistema no tienen empresa asociada.
+
+    Campos más importantes:
+        nombre: Nombre del rol (único por empresa).
+        descripcion: Descripción del alcance del rol.
+    """
     idrol = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     idempresa = models.ForeignKey('empresa.Empresa', on_delete=models.CASCADE, null=True, blank=True, db_column='idempresa')
     nombre = models.CharField(max_length=100)
@@ -67,16 +108,23 @@ class Rol(AuditableBaseModel):
 
     class Meta:
         app_label = 'seguridad'
-        db_table = 'rol'
+        db_table = 'rol'  # Nombre físico de la tabla en la base de datos
         verbose_name = 'Rol'
         verbose_name_plural = 'Roles'
-        unique_together = ('idempresa', 'nombre')
+        unique_together = ('idempresa', 'nombre')  # El nombre del rol es único por empresa
 
     def __str__(self):
         return self.nombre
 
 
 class Permiso(AuditableBaseModel):
+    """Representa un permiso individual o acción disponible en el sistema.
+
+    Campos más importantes:
+        codigo: Identificador único del permiso (ej. 'productos.crear').
+        nombre: Nombre legible del permiso (ej. 'Crear Producto').
+        descripcion: Explicación de qué acción autoriza el permiso.
+    """
     idpermiso = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     codigo = models.CharField(max_length=50, unique=True)
     nombre = models.CharField(max_length=100)
@@ -84,7 +132,7 @@ class Permiso(AuditableBaseModel):
 
     class Meta:
         app_label = 'seguridad'
-        db_table = 'permiso'
+        db_table = 'permiso'  # Nombre físico de la tabla en la base de datos
         verbose_name = 'Permiso'
         verbose_name_plural = 'Permisos'
 
@@ -93,32 +141,62 @@ class Permiso(AuditableBaseModel):
 
 
 class UsuarioRol(AuditableBaseModel):
+    """Tabla intermedia que asigna roles a usuarios (relación muchos a muchos).
+
+    Relación FK:
+        idusuario -> Usuario: Usuario al que se asigna el rol.
+        idrol -> Rol: Rol asignado al usuario.
+
+    unique_together: Un usuario no puede tener el mismo rol asignado más de una vez.
+    """
     idusuariorol = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     idusuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='idusuario')
     idrol = models.ForeignKey(Rol, on_delete=models.CASCADE, db_column='idrol')
 
     class Meta:
         app_label = 'seguridad'
-        db_table = 'usuariorol'
+        db_table = 'usuariorol'  # Nombre físico de la tabla en la base de datos
         verbose_name = 'Usuario - Rol'
         verbose_name_plural = 'Usuarios - Roles'
-        unique_together = ('idusuario', 'idrol')
+        unique_together = ('idusuario', 'idrol')  # Un usuario no puede tener el mismo rol repetido
 
 
 class RolPermiso(AuditableBaseModel):
+    """Tabla intermedia que asigna permisos a roles (relación muchos a muchos).
+
+    Relación FK:
+        idrol -> Rol: Rol al que se asigna el permiso.
+        idpermiso -> Permiso: Permiso asignado al rol.
+
+    unique_together: Un rol no puede tener el mismo permiso asignado más de una vez.
+    """
     idrolpermiso = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     idrol = models.ForeignKey(Rol, on_delete=models.CASCADE, db_column='idrol')
     idpermiso = models.ForeignKey(Permiso, on_delete=models.CASCADE, db_column='idpermiso')
 
     class Meta:
         app_label = 'seguridad'
-        db_table = 'rolpermiso'
+        db_table = 'rolpermiso'  # Nombre físico de la tabla en la base de datos
         verbose_name = 'Rol - Permiso'
         verbose_name_plural = 'Roles - Permisos'
-        unique_together = ('idrol', 'idpermiso')
+        unique_together = ('idrol', 'idpermiso')  # Un rol no puede tener el mismo permiso repetido
 
 
 class SesionUsuario(AuditableBaseModel):
+    """Registra las sesiones activas e históricas de los usuarios.
+
+    Relación FK:
+        idusuario -> Usuario: Usuario al que pertenece la sesión.
+
+    Campos más importantes:
+        tokenjwt: Token JWT activo de la sesión.
+        refreshtoken: Token de refresco asociado.
+        ip: Dirección IP desde donde se conectó.
+        dispositivo: Información del dispositivo utilizado.
+        navegador: User-agent del navegador.
+        fechainicio, fechafin: Período de duración de la sesión.
+        activa: Indica si la sesión sigue vigente.
+    """
     idsesionusuario = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     idusuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='idusuario')
     tokenjwt = models.TextField()
@@ -132,6 +210,6 @@ class SesionUsuario(AuditableBaseModel):
 
     class Meta:
         app_label = 'seguridad'
-        db_table = 'sesionusuario'
+        db_table = 'sesionusuario'  # Nombre físico de la tabla en la base de datos
         verbose_name = 'Sesión de Usuario'
         verbose_name_plural = 'Sesiones de Usuarios'

@@ -2,10 +2,23 @@ import { useState, useEffect } from 'react'
 import { dashboardService } from '../api/dashboard'
 import type { DashboardKPI } from '../types'
 
+/**
+ * Página principal del Dashboard (Panel de KPIs).
+ * Muestra indicadores clave de la empresa: datos de la empresa, sucursales, almacenes,
+ * estadísticas de picking, transferencias, movimientos del mes, inventario y últimos movimientos.
+ * 
+ * Estado:
+ *   - kpi: DashboardKPI | null — datos completos del dashboard devueltos por la API.
+ *   - loading: boolean — controla el spinner de carga inicial.
+ * 
+ * Llamadas API:
+ *   - dashboardService.getKpis() — recupera todos los KPIs en una sola petición.
+ */
 export default function DashboardPage() {
   const [kpi, setKpi] = useState<DashboardKPI | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Carga inicial de KPIs al montar el componente
   useEffect(() => {
     dashboardService.getKpis().then(({ data }) => setKpi(data)).catch(() => {}).finally(() => setLoading(false))
   }, [])
@@ -16,6 +29,7 @@ export default function DashboardPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
 
+      {/* Sección: datos generales de la empresa (razón social, RUC, correo, dirección) */}
       {kpi?.empresa && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex items-start justify-between">
@@ -35,6 +49,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Sección: lista de sucursales con su estado */}
       {kpi?.sucursales && kpi.sucursales.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h3 className="font-semibold text-gray-700 mb-4">Sucursales ({kpi.sucursales.length})</h3>
@@ -55,6 +70,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Sección: lista de almacenes con sucursal asociada */}
       {kpi?.almacenes && kpi.almacenes.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h3 className="font-semibold text-gray-700 mb-4">Almacenes ({kpi.almacenes.length})</h3>
@@ -75,6 +91,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Sección: tarjetas resumen con conteo de entidades (sucursales, almacenes, usuarios, productos) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Sucursales', value: kpi?.entidades.sucursales ?? 0, color: 'bg-green-500' },
@@ -90,7 +107,9 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* Sección: cuadrícula de 3 columnas con estadísticas de Picking, Transferencias y Movimientos del Mes */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Panel de órdenes de picking (pendientes, en proceso, hoy, completadas hoy, este mes) */}
         <div className="bg-white rounded-lg shadow p-5">
           <h3 className="font-semibold text-gray-700 mb-4">Picking</h3>
           <div className="space-y-3">
@@ -109,6 +128,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Panel de transferencias (pendientes, en tránsito, este mes) */}
         <div className="bg-white rounded-lg shadow p-5">
           <h3 className="font-semibold text-gray-700 mb-4">Transferencias</h3>
           <div className="space-y-3">
@@ -125,6 +145,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Panel de movimientos del mes (entradas, salidas, ajustes) */}
         <div className="bg-white rounded-lg shadow p-5">
           <h3 className="font-semibold text-gray-700 mb-4">Movimientos del Mes</h3>
           <div className="space-y-3">
@@ -142,7 +163,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Sección: inventario general y últimos movimientos (2 columnas) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Panel de inventario: productos, stock items, stock total, zonas, nodos */}
         <div className="bg-white rounded-lg shadow p-5">
           <h3 className="font-semibold text-gray-700 mb-4">Inventario</h3>
           <div className="space-y-3">
@@ -164,6 +187,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Panel de últimos movimientos: lista con tipo, producto y cantidad */}
         <div className="bg-white rounded-lg shadow p-5">
           <h3 className="font-semibold text-gray-700 mb-4">Últimos Movimientos</h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">

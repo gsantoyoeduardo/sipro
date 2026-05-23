@@ -12,11 +12,17 @@ import LayoutMapPage from './LayoutMapPage'
 
 type ViewLevel = 'map' | 'zonas' | 'pasillos' | 'estantes' | 'niveles'
 
+/**
+ * Página de Layout con pestañas.
+ * Contiene 5 vistas: Mapa (canvas Konva), Zonas, Pasillos, Estantes, Niveles.
+ * Cada vista renderiza un subcomponente ABM (Alta-Baja-Modificación) con tabla + modal.
+ */
 export default function LayoutPage() {
   const [view, setView] = useState<ViewLevel>('map')
 
   return (
     <div>
+      {/* Barra de pestañas de navegación */}
       <div className="flex gap-2 mb-4">
         {[
           { key: 'map', label: 'Mapa' },
@@ -39,6 +45,7 @@ export default function LayoutPage() {
         ))}
       </div>
 
+      {/* Renderizado condicional según la pestaña activa */}
       {view === 'map' && <LayoutMapPage />}
       {view === 'zonas' && <ZonasABM />}
       {view === 'pasillos' && <PasillosABM />}
@@ -48,6 +55,18 @@ export default function LayoutPage() {
   )
 }
 
+/**
+ * ABM de Zonas.
+ * CRUD completo con tabla, filtro por almacén, modal de creación/edición,
+ * confirmación para eliminar y activar/desactivar.
+ *
+ * Estado:
+ *   - zonas: lista desde la API.
+ *   - almacenes: para el selector en filtro y formulario.
+ *   - form: campos del formulario (incluye posición y dimensiones).
+ *   - editing: zona en modo edición (null = creación).
+ *   - confirmDelete / confirmToggle: control de diálogos de confirmación.
+ */
 function ZonasABM() {
   const [zonas, setZonas] = useState<Zona[]>([])
   const [almacenes, setAlmacenes] = useState<Almacen[]>([])
@@ -64,6 +83,7 @@ function ZonasABM() {
     x: 0, y: 0, ancho: 120, alto: 80, color: '',
   })
 
+  // Carga datos de zonas y almacenes; se refiltra al cambiar filterAlmacen
   const fetchData = async () => {
     try {
       const [zonasRes, almRes] = await Promise.all([
@@ -77,6 +97,7 @@ function ZonasABM() {
 
   useEffect(() => { fetchData() }, [filterAlmacen])
 
+  // Validación de campos del formulario de zona
   const validate = (): boolean => {
     const e: Record<string, string> = {}
     const v1 = validateRequired(form.idalmacen, 'Almacén'); if (v1) e.idalmacen = v1
@@ -90,6 +111,7 @@ function ZonasABM() {
     return Object.keys(e).length === 0
   }
 
+  // Función de guardado: crea o actualiza según si editing tiene valor
   const saveFn = async () => {
     const data = { ...form, x: Number(form.x), y: Number(form.y), ancho: Number(form.ancho), alto: Number(form.alto), color: form.color || null }
     if (editing) await zonaService.update(editing.idzona, data)
@@ -113,8 +135,10 @@ function ZonasABM() {
     { successMessage: 'Estado actualizado', onSuccess: () => { setConfirmToggle(null); fetchData() } }
   )
 
+  // Helper para clase de input con borde rojo en error
   const ic = (key: string) => `w-full px-3 py-2 border rounded-lg ${fieldErrors[key] ? 'border-red-500' : ''}`
 
+  // Columnas de la tabla de zonas
   const columns = [
     { key: 'nombre', header: 'Nombre' },
     { key: 'codigo', header: 'Código' },
@@ -133,6 +157,7 @@ function ZonasABM() {
 
   return (
     <div>
+      {/* Encabezado con filtro por almacén y botón de nueva zona */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-bold text-gray-800">Zonas</h2>
@@ -154,6 +179,7 @@ function ZonasABM() {
             <button onClick={() => setConfirmDelete(item)} className="text-red-600 hover:text-red-800">Eliminar</button>
           </>
         )} />
+      {/* Modal de creación/edición de zona */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar Zona' : 'Nueva Zona'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -220,12 +246,18 @@ function ZonasABM() {
         </form>
       </Modal>
 
+      {/* Diálogos de confirmación para eliminar y activar/desactivar */}
       <ConfirmDialog isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={() => handleDeleteConfirm()} title="Eliminar Zona" message={`¿Está seguro de eliminar "${confirmDelete?.nombre}"?`} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deleting} />
       <ConfirmDialog isOpen={!!confirmToggle} onClose={() => setConfirmToggle(null)} onConfirm={() => handleToggleConfirm()} title={confirmToggle?.estado ? 'Desactivar Zona' : 'Activar Zona'} message={`¿Está seguro de ${confirmToggle?.estado ? 'desactivar' : 'activar'} "${confirmToggle?.nombre}"?`} confirmLabel={confirmToggle?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={toggling} />
     </div>
   )
 }
 
+/**
+ * ABM de Pasillos.
+ * CRUD completo con filtro por zona, tabla, modal y confirmaciones.
+ * Los pasillos pertenecen a una zona y tienen orientación horizontal o vertical.
+ */
 function PasillosABM() {
   const [items, setItems] = useState<Pasillo[]>([])
   const [zonas, setZonas] = useState<Zona[]>([])
@@ -239,6 +271,7 @@ function PasillosABM() {
   const [confirmToggle, setConfirmToggle] = useState<Pasillo | null>(null)
   const [form, setForm] = useState({ idzona: '', nombre: '', codigo: '', x: 0, y: 0, ancho: 40, largo: 60, orientacion: 'horizontal' as string })
 
+  // Carga pasillos y zonas; se refiltra al cambiar filterZona
   const fetchData = async () => {
     try {
       const [pRes, zRes] = await Promise.all([pasilloService.list(filterZona || undefined), zonaService.list()])
@@ -247,6 +280,7 @@ function PasillosABM() {
   }
   useEffect(() => { fetchData() }, [filterZona])
 
+  // Validación de campos del pasillo
   const validate = (): boolean => {
     const e: Record<string, string> = {}
     const v1 = validateRequired(form.idzona, 'Zona'); if (v1) e.idzona = v1
@@ -260,6 +294,7 @@ function PasillosABM() {
     return Object.keys(e).length === 0
   }
 
+  // Guarda: crea o actualiza pasillo
   const saveFn = async () => {
     const data = { ...form, x: Number(form.x), y: Number(form.y), ancho: Number(form.ancho), largo: Number(form.largo) }
     if (editing) await pasilloService.update(editing.idpasillo, data)
@@ -293,6 +328,7 @@ function PasillosABM() {
 
   return (
     <div>
+      {/* Encabezado: filtro por zona y botón nuevo pasillo */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-bold text-gray-800">Pasillos</h2>
@@ -313,6 +349,7 @@ function PasillosABM() {
             <button onClick={() => setConfirmDelete(item)} className="text-red-600 hover:text-red-800">Eliminar</button>
           </>
         )} />
+      {/* Modal de creación/edición */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar Pasillo' : 'Nuevo Pasillo'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -382,6 +419,11 @@ function PasillosABM() {
   )
 }
 
+/**
+ * ABM de Estantes.
+ * CRUD completo con filtro por pasillo. Los estantes tienen lado (derecha/izquierda),
+ * cantidad de niveles y dimensiones físicas.
+ */
 function EstantesABM() {
   const [items, setItems] = useState<Estante[]>([])
   const [pasillos, setPasillos] = useState<Pasillo[]>([])
@@ -395,6 +437,7 @@ function EstantesABM() {
   const [confirmToggle, setConfirmToggle] = useState<Estante | null>(null)
   const [form, setForm] = useState({ idpasillo: '', nombre: '', codigo: '', x: 0, y: 0, ancho: 20, alto: 30, profundidad: 20, lado: 'derecha' as string, cantidadniveles: 3 })
 
+  // Carga estantes y pasillos; se refiltra al cambiar filterPasillo
   const fetchData = async () => {
     try {
       const [eRes, pRes] = await Promise.all([estanteService.list(filterPasillo || undefined), pasilloService.list()])
@@ -403,6 +446,7 @@ function EstantesABM() {
   }
   useEffect(() => { fetchData() }, [filterPasillo])
 
+  // Validación de campos del estante
   const validate = (): boolean => {
     const e: Record<string, string> = {}
     const v1 = validateRequired(form.idpasillo, 'Pasillo'); if (v1) e.idpasillo = v1
@@ -418,6 +462,7 @@ function EstantesABM() {
     return Object.keys(e).length === 0
   }
 
+  // Guarda: crea o actualiza estante
   const saveFn = async () => {
     const data = { ...form, x: Number(form.x), y: Number(form.y), ancho: Number(form.ancho), alto: Number(form.alto), profundidad: Number(form.profundidad), cantidadniveles: Number(form.cantidadniveles) }
     if (editing) await estanteService.update(editing.idestante, data)
@@ -451,6 +496,7 @@ function EstantesABM() {
 
   return (
     <div>
+      {/* Encabezado: filtro por pasillo y botón nuevo estante */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-bold text-gray-800">Estantes</h2>
@@ -471,6 +517,7 @@ function EstantesABM() {
             <button onClick={() => setConfirmDelete(item)} className="text-red-600 hover:text-red-800">Eliminar</button>
           </>
         )} />
+      {/* Modal de creación/edición */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar Estante' : 'Nuevo Estante'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -544,6 +591,11 @@ function EstantesABM() {
   )
 }
 
+/**
+ * ABM de Niveles.
+ * CRUD completo con filtro por estante. Los niveles representan cada bandeja
+ * o altura dentro de un estante, con un número y altura específicos.
+ */
 function NivelesABM() {
   const [items, setItems] = useState<Nivel[]>([])
   const [estantes, setEstantes] = useState<Estante[]>([])
@@ -557,6 +609,7 @@ function NivelesABM() {
   const [confirmToggle, setConfirmToggle] = useState<Nivel | null>(null)
   const [form, setForm] = useState({ idestante: '', nombre: '', numero: 1, altura: 10 })
 
+  // Carga niveles y estantes; se refiltra al cambiar filterEstante
   const fetchData = async () => {
     try {
       const [nRes, eRes] = await Promise.all([nivelService.list(filterEstante || undefined), estanteService.list()])
@@ -565,6 +618,7 @@ function NivelesABM() {
   }
   useEffect(() => { fetchData() }, [filterEstante])
 
+  // Validación de campos del nivel
   const validate = (): boolean => {
     const e: Record<string, string> = {}
     const v1 = validateRequired(form.idestante, 'Estante'); if (v1) e.idestante = v1
@@ -576,6 +630,7 @@ function NivelesABM() {
     return Object.keys(e).length === 0
   }
 
+  // Guarda: crea o actualiza nivel
   const saveFn = async () => {
     const data = { ...form, numero: Number(form.numero), altura: Number(form.altura) }
     if (editing) await nivelService.update(editing.idnivel, data)
@@ -608,6 +663,7 @@ function NivelesABM() {
 
   return (
     <div>
+      {/* Encabezado: filtro por estante y botón nuevo nivel */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-bold text-gray-800">Niveles</h2>
@@ -628,6 +684,7 @@ function NivelesABM() {
             <button onClick={() => setConfirmDelete(item)} className="text-red-600 hover:text-red-800">Eliminar</button>
           </>
         )} />
+      {/* Modal de creación/edición */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar Nivel' : 'Nuevo Nivel'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

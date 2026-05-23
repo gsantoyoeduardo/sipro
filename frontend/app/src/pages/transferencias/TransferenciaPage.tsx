@@ -11,6 +11,7 @@ import { validateRequired, validateNotEqual, validatePositive } from '../../util
 import type { Almacen, Producto, Transferencia, DetalleTransferenciaItem } from '../../types'
 import type { FieldError } from '../../utils/validators'
 
+// Componente SVG reutilizable para spinner de carga
 const SPINNER = (
   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -18,6 +19,26 @@ const SPINNER = (
   </svg>
 )
 
+/**
+ * Página de Transferencias entre almacenes.
+ * Permite crear transferencias, agregar productos como detalle, y ejecutar
+ * el flujo de estados: pendiente → enviar → en_tránsito → recibir → completado,
+ * o bien rechazar desde pendiente o en_tránsito.
+ *
+ * Estado:
+ *   - items: lista de transferencias.
+ *   - almacenes / productos: datos auxiliares para selects.
+ *   - filterEstado: filtro por estado.
+ *   - form: datos del formulario de creación.
+ *   - detalleForm: datos para agregar productos a una transferencia.
+ *   - confirmAction: controla el ConfirmDialog para enviar/recibir/rechazar.
+ *   - selectedTr / detalles: transferencia seleccionada y sus detalle.
+ *
+ * Llamadas API:
+ *   - transferenciaService.list(), .create(), .enviar(), .recibir(), .rechazar()
+ *   - transferenciaService.getDetalles(), .createDetalle()
+ *   - almacenService.list(), productoService.list()
+ */
 export default function TransferenciaPage() {
   const [items, setItems] = useState<Transferencia[]>([])
   const [almacenes, setAlmacenes] = useState<Almacen[]>([])
@@ -37,6 +58,7 @@ export default function TransferenciaPage() {
   const [detalleSubmitting, setDetalleSubmitting] = useState(false)
   const addToast = useToastStore((state) => state.addToast)
 
+  // Carga principal: transferencias, almacenes y productos (se refiltra al cambiar filterEstado)
   const fetchData = async () => {
     try {
       const [tRes, aRes, pRes] = await Promise.all([
@@ -51,9 +73,11 @@ export default function TransferenciaPage() {
   }
   useEffect(() => { fetchData() }, [filterEstado])
 
+  // Helper para aplicar clase de error en inputs
   const ic = (field: string, errors: FieldError) =>
     errors[field] ? 'border-red-500' : 'border-gray-300'
 
+  // Validación del formulario principal: origen, destino (distintos), número
   const validateForm = (): boolean => {
     const errors: FieldError = {}
     errors['idalmacen_origen'] = validateRequired(form.idalmacen_origen, 'Almac\u00e9n origen')
@@ -66,6 +90,7 @@ export default function TransferenciaPage() {
     return !Object.values(errors).some(Boolean)
   }
 
+  // Envía el formulario de creación de transferencia
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validateForm()) return
@@ -79,6 +104,7 @@ export default function TransferenciaPage() {
     } finally { setFormSubmitting(false) }
   }
 
+  // Confirmación de acciones: enviar, recibir, rechazar
   const { submit: handleConfirmAction, isSubmitting: confirmLoading } = useSubmit(
     async () => {
       if (!confirmAction) return
@@ -90,6 +116,7 @@ export default function TransferenciaPage() {
     { successMessage: 'Acci\u00f3n ejecutada', onSuccess: () => { setConfirmAction(null); fetchData() } }
   )
 
+  // Abre el modal de detalles y carga los productos asociados a la transferencia
   const openDetalles = async (tr: Transferencia) => {
     setSelectedTr(tr)
     try {
@@ -102,6 +129,7 @@ export default function TransferenciaPage() {
     setDetalleModalOpen(true)
   }
 
+  // Validación del formulario de detalle: producto obligatorio, cantidad positiva
   const validateDetalle = (): boolean => {
     const errors: FieldError = {}
     errors['idproducto'] = validateRequired(detalleForm.idproducto, 'Producto')
@@ -110,6 +138,7 @@ export default function TransferenciaPage() {
     return !Object.values(errors).some(Boolean)
   }
 
+  // Agrega un producto como detalle a la transferencia seleccionada
   const handleAddDetalle = async () => {
     if (!selectedTr || !validateDetalle()) return
     setDetalleSubmitting(true)
@@ -124,6 +153,7 @@ export default function TransferenciaPage() {
     } finally { setDetalleSubmitting(false) }
   }
 
+  // Definición de columnas de la tabla principal
   const columns = [
     { key: 'numero_transferencia', header: 'Transferencia' },
     { key: 'origen_nombre', header: 'Origen' },
@@ -138,6 +168,7 @@ export default function TransferenciaPage() {
 
   return (
     <div>
+      {/* Encabezado: título, filtro por estado y botón nueva transferencia */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-800">Transferencias</h1>
@@ -150,6 +181,7 @@ export default function TransferenciaPage() {
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Nueva Transferencia</button>
       </div>
 
+      {/* Tabla principal de transferencias con acciones: Detalles, Enviar, Recibir, Rechazar */}
       <DataTable columns={columns} data={items} loading={loading}
         actions={(item) => (
           <>
@@ -160,6 +192,7 @@ export default function TransferenciaPage() {
           </>
         )} />
 
+      {/* Modal de creación de transferencia: origen, destino, número, notas */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Nueva Transferencia">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -206,14 +239,17 @@ export default function TransferenciaPage() {
         </form>
       </Modal>
 
+      {/* Modal de detalles: muestra productos de la transferencia y permite agregar más si está pendiente */}
       <Modal isOpen={detalleModalOpen} onClose={() => setDetalleModalOpen(false)} title={`Detalles: ${selectedTr?.numero_transferencia}`} size="lg">
         <div className="space-y-4">
+          {/* Información resumen: origen, destino, estado */}
           <div className="flex text-sm gap-4">
             <span>Origen: <strong>{selectedTr?.origen_nombre}</strong></span>
             <span>Destino: <strong>{selectedTr?.destino_nombre}</strong></span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${selectedTr?.estado === 'completado' ? 'bg-green-100 text-green-800' : selectedTr?.estado === 'rechazado' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>{selectedTr?.estado}</span>
           </div>
 
+          {/* Lista de productos/detalles de la transferencia */}
           {detalles.map((det) => (
             <div key={det.iddetalletransferencia} className="border rounded-lg p-3 flex justify-between items-center">
               <div>
@@ -224,6 +260,7 @@ export default function TransferenciaPage() {
             </div>
           ))}
 
+          {/* Formulario para agregar productos solo si la transferencia está pendiente */}
           {selectedTr && selectedTr.estado === 'pendiente' && (
             <div className="border-t pt-4">
               <h4 className="font-medium text-sm mb-2">Agregar Producto</h4>
@@ -263,6 +300,7 @@ export default function TransferenciaPage() {
         </div>
       </Modal>
 
+      {/* ConfirmDialog para enviar la transferencia */}
       {confirmAction && confirmAction.action === 'enviar' && (
         <ConfirmDialog
           isOpen={!!confirmAction}
@@ -275,6 +313,7 @@ export default function TransferenciaPage() {
         />
       )}
 
+      {/* ConfirmDialog para recibir la transferencia */}
       {confirmAction && confirmAction.action === 'recibir' && (
         <ConfirmDialog
           isOpen={!!confirmAction}
@@ -287,6 +326,7 @@ export default function TransferenciaPage() {
         />
       )}
 
+      {/* ConfirmDialog para rechazar la transferencia */}
       {confirmAction && confirmAction.action === 'rechazar' && (
         <ConfirmDialog
           isOpen={!!confirmAction}

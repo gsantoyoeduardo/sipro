@@ -4,16 +4,40 @@ import { almacenService } from '../../api/empresa'
 import { zonaService, nodoService, conexionService, rutaService } from '../../api/layout'
 import type { Almacen, Zona, Nodo, Conexion, RutaResult } from '../../types'
 
+// Colores para los distintos tipos de zonas en el mapa
 const TIPO_COLORS: Record<string, string> = {
   recepcion: '#E8F5E9', almacenamiento: '#E3F2FD', despacho: '#FFF3E0',
   picking: '#F3E5F5', devoluciones: '#FFEBEE',
 }
 
+// Colores para los distintos tipos de nodos (entrada, salida, esquina, etc.)
 const NODO_COLORS: Record<string, string> = {
   entrada: '#4CAF50', salida: '#F44336', esquina: '#607D8B',
   interseccion: '#FF9800', punto_recogida: '#2196F3',
 }
 
+/**
+ * Página de Rutas Inteligentes (algoritmo Dijkstra).
+ * Permite seleccionar un almacén, elegir nodo origen y destino, y calcular la ruta
+ * más corta sobre el grafo de nodos y conexiones del layout.
+ *
+ * Estado:
+ *   - almacenes / selectedAlmacen: lista y selección de almacén.
+ *   - zonas, nodos, conexiones: datos del layout del almacén seleccionado.
+ *   - origenId / destinoId: IDs de los nodos elegidos para la ruta.
+ *   - rutaResult: resultado devuelto por el backend (distancia, camino, etc.).
+ *   - error / loading: control de estados de carga y error.
+ *
+ * Llamadas API:
+ *   - almacenService.list() — lista de almacenes.
+ *   - zonaService.list(), nodoService.list(), conexionService.list() — layout.
+ *   - rutaService.calcular(origen, destino) — ejecuta Dijkstra en backend.
+ *
+ * Renderiza:
+ *   - Formulario de selección (almacén, origen, destino, botón).
+ *   - Resultado de la ruta (distancia total, nodos visitados, camino paso a paso).
+ *   - Lienzo Konva con zonas, conexiones y nodos; los nodos de la ruta se resaltan.
+ */
 export default function RutasPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 800, height: 500 })
@@ -28,6 +52,7 @@ export default function RutasPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Ajusta el tamaño del contenedor Konva al ancho disponible y al resize de la ventana
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
@@ -39,10 +64,12 @@ export default function RutasPage() {
     return () => window.removeEventListener('resize', updateSize)
   }, [])
 
+  // Carga la lista de almacenes al montar el componente
   useEffect(() => {
     almacenService.list().then(({ data }) => setAlmacenes(data.results)).catch(() => {})
   }, [])
 
+  // Al cambiar el almacén seleccionado, carga su layout (zonas, nodos, conexiones)
   useEffect(() => {
     if (!selectedAlmacen) return
     setLoading(true)
@@ -58,9 +85,14 @@ export default function RutasPage() {
     }).catch(() => {}).finally(() => setLoading(false))
   }, [selectedAlmacen])
 
+  // Filtra nodos pertenecientes al almacén actual
   const nodosFiltrados = nodos.filter((n) => n.idalmacen === selectedAlmacen)
   const escala = 2.5
 
+  /**
+   * Ejecuta el cálculo de la ruta entre origenId y destinoId
+   * llamando al endpoint rutaService.calcular (Dijkstra).
+   */
   const handleCalcularRuta = async () => {
     if (!origenId || !destinoId) return
     setError('')
@@ -75,12 +107,14 @@ export default function RutasPage() {
     } finally { setLoading(false) }
   }
 
+  // Conjunto de IDs de nodos que forman parte de la ruta calculada, para resaltarlos en el canvas
   const rutaIds = new Set(rutaResult?.ruta.map((n) => n.idnodo) || [])
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Rutas Inteligentes (Dijkstra)</h1>
 
+      {/* Formulario: selección de almacén, nodo origen, nodo destino y botón calcular */}
       <div className="bg-white rounded-lg shadow p-4 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div>
@@ -112,8 +146,10 @@ export default function RutasPage() {
         </div>
       </div>
 
+      {/* Mensaje de error si la ruta no pudo calcularse */}
       {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
 
+      {/* Resultado de la ruta: distancia total, nodos visitados y secuencia paso a paso */}
       {rutaResult && (
         <div className="mb-4">
           <span className="font-semibold">Distancia total: {rutaResult.distancia_total}m</span>
@@ -131,10 +167,13 @@ export default function RutasPage() {
         </div>
       )}
 
+      {/* Lienzo Konva: muestra zonas, conexiones y nodos del almacén.
+          Las conexiones y nodos que forman parte de la ruta se resaltan en azul. */}
       {selectedAlmacen && (
         <div ref={containerRef} className="bg-gray-50 rounded-lg border overflow-hidden">
           <Stage width={size.width} height={size.height}>
             <Layer>
+              {/* Renderiza zonas como rectángulos coloreados según su tipo */}
               {zonas.map((zona) => (
                 <Rect
                   key={zona.idzona}
@@ -145,6 +184,7 @@ export default function RutasPage() {
                 />
               ))}
 
+              {/* Renderiza conexiones entre nodos; las que pertenecen a la ruta se pintan azul grueso */}
               {conexiones.filter((c) => {
                 const from = nodos.find((n) => n.idnodo === c.idnodoorigen)
                 const to = nodos.find((n) => n.idnodo === c.idnododestino)
@@ -165,6 +205,7 @@ export default function RutasPage() {
                 )
               })}
 
+              {/* Renderiza nodos como círculos; los de la ruta, origen y destino tienen tamaño y color especiales */}
               {nodosFiltrados.map((nodo) => {
                 const isInRoute = rutaIds.has(nodo.idnodo)
                 const isStart = nodo.idnodo === origenId
@@ -180,6 +221,7 @@ export default function RutasPage() {
                 )
               })}
 
+              {/* Etiquetas de texto para nodos de tipo entrada y salida */}
               {nodosFiltrados.filter((n) => n.tipo === 'entrada' || n.tipo === 'salida').map((nodo) => (
                 <KonvaText
                   key={`label-${nodo.idnodo}`}

@@ -1,3 +1,8 @@
+﻿/**
+ * Hook personalizado useSubmit.
+ * Encapsula la l\u00f3gica de env\u00edo de formularios con manejo de estado
+ * de carga, errores y notificaciones toast de \u00e9xito/error.
+ */
 import { useState, useCallback } from 'react'
 import { useToastStore } from '../store/toastStore'
 
@@ -15,6 +20,7 @@ export function useSubmit<T extends (...args: any[]) => Promise<any>>(
   const [error, setError] = useState<string | null>(null)
   const addToast = useToastStore((state) => state.addToast)
 
+  // Funci\u00f3n de env\u00edo que ejecuta fn, maneja errores y muestra notificaciones
   const submit = useCallback(
     async (...args: Parameters<T>) => {
       setIsSubmitting(true)
@@ -27,6 +33,7 @@ export function useSubmit<T extends (...args: any[]) => Promise<any>>(
         options.onSuccess?.()
         return result
       } catch (err: any) {
+        // Extrae el mensaje de error desde diferentes formatos de respuesta API
         const message =
           err?.response?.data?.error ||
           err?.response?.data?.detail ||

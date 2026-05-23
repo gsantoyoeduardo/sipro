@@ -1,7 +1,14 @@
+﻿/**
+ * Componente de Layout principal de la aplicaci\u00f3n.
+ * Renderiza un sidebar de navegaci\u00f3n con grupos de men\u00fa, un header superior
+ * con informaci\u00f3n del usuario y bot\u00f3n de cierre de sesi\u00f3n, y un \u00e1rea
+ * de contenido donde se renderizan las rutas hijas mediante <Outlet />.
+ */
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 
+// Grupos de navegaci\u00f3n del men\u00fa lateral con sus rutas e iconos SVG
 const gruposMenu = [
   {
     label: 'Principal',
@@ -10,7 +17,7 @@ const gruposMenu = [
     ],
   },
   {
-    label: 'Configuración',
+    label: 'Configuraci\u00f3n',
     items: [
       { label: 'Empresas', path: '/empresas', icon: BuildingIcon },
       { label: 'Sucursales', path: '/sucursales', icon: StoreIcon },
@@ -32,6 +39,7 @@ const gruposMenu = [
   },
 ]
 
+// Obtiene las iniciales del nombre del usuario (m\u00e1ximo 2 caracteres)
 function getInitials(nombre: string): string {
   return nombre
     .split(' ')
@@ -47,10 +55,12 @@ export default function Layout() {
   const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
-  const userName = user ? `${user.nombres} ${user.apellidos}` : 'Usuario'
+  const userName = user ? ${user.nombres}  : 'Usuario'
   const initials = getInitials(user?.nombres || 'U')
+  // Determina si el usuario es admin_sistema (ve la secci\u00f3n Empresas)
   const esAdminSistema = user?.tipo_usuario === 'admin_sistema'
 
+  // Filtra los items del men\u00fa seg\u00fan el tipo de usuario
   const menuFiltrado = gruposMenu.map((grupo) => ({
     ...grupo,
     items: grupo.items.filter((item) => {
@@ -59,6 +69,7 @@ export default function Layout() {
     }),
   }))
 
+  // Determina la etiqueta de la p\u00e1gina actual para mostrar en el header
   const paginaActual = gruposMenu
     .flatMap((g) => g.items)
     .find((item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))
@@ -66,22 +77,22 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Mobile overlay */}
+      {/* Overlay para cerrar sidebar en m\u00f3vil */}
       {mobileOpen && (
         <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar de navegaci\u00f3n */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 bg-slate-900 text-white flex flex-col w-72 transition-transform duration-300
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={ixed lg:static inset-y-0 left-0 z-30 bg-slate-900 text-white flex flex-col w-72 transition-transform duration-300
+          }
       >
         {/* Logo */}
         <div className="flex items-center justify-center h-20 px-6 border-b border-slate-700/50">
           <img src="/logoborde.png" alt="SIPRO" className="h-12" />
         </div>
 
-        {/* Navigation */}
+        {/* Men\u00fa de navegaci\u00f3n con grupos e items */}
         <nav className="flex-1 py-6 px-3 overflow-y-auto space-y-6">
           {menuFiltrado.map((grupo) => (
             <div key={grupo.label}>
@@ -99,13 +110,10 @@ export default function Layout() {
                         navigate(item.path)
                         setMobileOpen(false)
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-all duration-200 group
-                        ${isActive
-                          ? 'bg-blue-600/20 text-white border-l-[3px] border-blue-400 ml-[-3px]'
-                          : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-[3px] border-transparent ml-[-3px]'
-                        }`}
+                      className={w-full flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-all duration-200 group
+                        }
                     >
-                      <span className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-300'}`}>
+                      <span className={w-5 h-5 flex-shrink-0 }>
                         <item.icon />
                       </span>
                       <span className="font-medium truncate">{item.label}</span>
@@ -120,7 +128,7 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* User section */}
+        {/* Secci\u00f3n inferior con datos del usuario */}
         <div className="border-t border-slate-700/50 p-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
@@ -134,11 +142,12 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main content */}
+      {/* \u00c1rea principal de contenido */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
+        {/* Header superior con t\u00edtulo de p\u00e1gina y opciones de usuario */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
           <div className="flex items-center gap-4">
+            {/* Bot\u00f3n de men\u00fa hamburguesa para m\u00f3vil */}
             <button
               onClick={() => setMobileOpen(true)}
               className="lg:hidden text-gray-500 hover:text-gray-700"
@@ -149,6 +158,7 @@ export default function Layout() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500 hidden sm:block">{userName}</span>
+            {/* Bot\u00f3n de cierre de sesi\u00f3n */}
             <button
               onClick={() => logout()}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 font-medium transition-colors"
@@ -159,7 +169,7 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Page content */}
+        {/* Contenido de la p\u00e1gina (rutas hijas) */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <Outlet />
         </main>

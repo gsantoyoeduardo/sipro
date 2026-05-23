@@ -12,11 +12,21 @@ import type { Almacen, Producto, OrdenPicking, DetallePickingItem } from '../../
 
 type TabView = 'panel' | 'ordenes' | 'detalles'
 
+/**
+ * Página de Picking.
+ * Contiene 3 vistas con pestañas:
+ *   - Panel Kanban: tablero visual con columnas por estado (pendiente, en_proceso, completado, cancelado).
+ *   - Órdenes: tabla ABM de órdenes de picking.
+ *   - Detalles: tabla de detalle de productos por orden.
+ *
+ * Estado compartido: ninguna (cada subcomponente maneja su propio estado).
+ */
 export default function PickingPage() {
   const [view, setView] = useState<TabView>('panel')
 
   return (
     <div>
+      {/* Barra de pestañas */}
       <div className="flex gap-2 mb-4">
         {[
           { key: 'panel', label: 'Panel Kanban' },
@@ -36,6 +46,22 @@ export default function PickingPage() {
   )
 }
 
+/**
+ * Panel Kanban de órdenes de picking.
+ * Muestra un tablero con 4 columnas (pendiente, en_proceso, completado, cancelado).
+ * Cada tarjeta permite: iniciar, completar, cancelar, y ver detalles en un modal.
+ * Dentro del modal se puede hacer pick (+1 o completar) y reportar incidencias.
+ *
+ * Estado:
+ *   - ordenes: lista completa filtrada por almacén.
+ *   - selectedOrden / detalles: orden seleccionada y sus productos.
+ *   - incidenciaForm / incidenciaDetalle: formulario de reporte de incidencias.
+ *   - confirmAction: confirmación para iniciar/completar/cancelar.
+ *
+ * Llamadas API:
+ *   - pickingService.list(), .iniciar(), .completar(), .cancelar(), .getDetalles()
+ *   - detallePickingService.pick(), .reportarIncidencia()
+ */
 function KanbanPanel() {
   const [ordenes, setOrdenes] = useState<OrdenPicking[]>([])
   const [almacenes, setAlmacenes] = useState<Almacen[]>([])
@@ -52,6 +78,7 @@ function KanbanPanel() {
   const addToast = useToastStore((state) => state.addToast)
   const [confirmAction, setConfirmAction] = useState<{orden: OrdenPicking, action: string} | null>(null)
 
+  // Carga las órdenes de picking y almacenes; se refiltra al cambiar filterAlmacen
   const fetchOrdenes = async () => {
     try {
       const [oRes, aRes] = await Promise.all([
@@ -63,10 +90,12 @@ function KanbanPanel() {
   }
   useEffect(() => { fetchOrdenes() }, [filterAlmacen])
 
+  // Prepara la confirmación para iniciar/completar/cancelar una orden
   const handleAction = (orden: OrdenPicking, action: string) => {
     setConfirmAction({ orden, action })
   }
 
+  // Ejecuta la acción confirmada (iniciar, completar, cancelar)
   const { submit: handleActionConfirm, isSubmitting: actionLoading } = useSubmit(
     async () => {
       if (!confirmAction) return
@@ -79,6 +108,7 @@ function KanbanPanel() {
       onSuccess: () => { setConfirmAction(null); fetchOrdenes() } }
   )
 
+  // Abre el modal de detalles de una orden y carga sus productos
   const openDetalles = async (orden: OrdenPicking) => {
     setSelectedOrden(orden)
     try {
@@ -88,12 +118,14 @@ function KanbanPanel() {
     setModalOpen(true)
   }
 
+  // Realiza el pick de una cantidad sobre un detalle de picking
   const handlePick = async (detalle: DetallePickingItem, cantidad: number) => {
     await detallePickingService.pick(detalle.iddetallepicking, cantidad)
     if (selectedOrden) openDetalles(selectedOrden)
     fetchOrdenes()
   }
 
+  // Validación del formulario de incidencia
   const validateIncidencia = (): boolean => {
     const e: Record<string, string> = {}
     const v1 = validateRequired(incidenciaForm.tipo, 'Tipo'); if (v1) e.tipo = v1
@@ -102,6 +134,7 @@ function KanbanPanel() {
     return Object.keys(e).length === 0
   }
 
+  // Función de envío del reporte de incidencia
   const reportarFn = async () => {
     if (!incidenciaDetalle) return
     await detallePickingService.reportarIncidencia(incidenciaDetalle, { ...incidenciaForm, cantidad_reportada: Number(incidenciaForm.cantidad_reportada) })
@@ -124,6 +157,7 @@ function KanbanPanel() {
 
   const iic = (key: string) => `w-full px-3 py-2 border rounded-lg ${incidenciaErrors[key] ? 'border-red-500' : ''}`
 
+  // Definición de los estados del Kanban y sus estilos/label
   const estados: OrdenPicking['estado'][] = ['pendiente', 'en_proceso', 'completado', 'cancelado']
   const estadoColors: Record<string, string> = { pendiente: 'bg-yellow-50 border-yellow-300', en_proceso: 'bg-blue-50 border-blue-300', completado: 'bg-green-50 border-green-300', cancelado: 'bg-red-50 border-red-300' }
   const estadoLabels = { pendiente: 'Pendientes', en_proceso: 'En Proceso', completado: 'Completadas', cancelado: 'Canceladas' }
@@ -278,6 +312,19 @@ function KanbanPanel() {
   )
 }
 
+/**
+ * ABM de Órdenes de Picking.
+ * Tabla con lista de órdenes, modal de creación, y acciones para iniciar/completar/cancelar.
+ * Los detalles se gestionan desde la vista DetallesView.
+ *
+ * Estado:
+ *   - items: lista de órdenes.
+ *   - form: campos del formulario de nueva orden.
+ *   - confirmAction: confirmación para iniciar/completar/cancelar.
+ *
+ * Llamadas API:
+ *   - pickingService.list(), .create(), .iniciar(), .completar(), .cancelar()
+ */
 function OrdenesABM() {
   const [items, setItems] = useState<OrdenPicking[]>([])
   const [almacenes, setAlmacenes] = useState<Almacen[]>([])
@@ -289,6 +336,7 @@ function OrdenesABM() {
   const addToast = useToastStore((state) => state.addToast)
   const [confirmAction, setConfirmAction] = useState<{orden: OrdenPicking, action: string} | null>(null)
 
+  // Carga órdenes y almacenes al montar
   const fetchData = async () => {
     try {
       const [oRes, aRes] = await Promise.all([pickingService.list(), almacenService.list()])
@@ -407,6 +455,21 @@ function OrdenesABM() {
   )
 }
 
+/**
+ * Vista de Detalles de Picking.
+ * Tabla de productos asociados a órdenes de picking, con filtro por orden.
+ * Permite agregar productos a una orden existente mediante un modal.
+ *
+ * Estado:
+ *   - items: lista de detalles (productos) de picking.
+ *   - selectedOrden: filtro para ver detalles de una orden específica.
+ *   - form: formulario para agregar un nuevo producto a la orden seleccionada.
+ *
+ * Llamadas API:
+ *   - detallePickingService.list() — lista detalle (con filtro opcional por orden).
+ *   - pickingService.list(), productoService.list() — datos auxiliares.
+ *   - pickingService.createDetalle() — agrega producto a una orden.
+ */
 function DetallesView() {
   const [items, setItems] = useState<DetallePickingItem[]>([])
   const [ordenes, setOrdenes] = useState<OrdenPicking[]>([])
@@ -419,6 +482,7 @@ function DetallesView() {
 
   const addToast = useToastStore((state) => state.addToast)
 
+  // Carga detalles, órdenes y productos; se refiltra al cambiar selectedOrden
   const fetchData = async () => {
     try {
       const [dRes, oRes, pRes] = await Promise.all([detallePickingService.list(selectedOrden || undefined), pickingService.list(), productoService.list()])

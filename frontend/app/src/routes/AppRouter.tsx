@@ -1,3 +1,8 @@
+﻿/**
+ * Router principal de la aplicaci\u00f3n.
+ * Define las rutas p\u00fablicas (login) y privadas (protegidas por PrivateRoute),
+ * con un layout compartido que incluye sidebar y header.
+ */
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import Layout from '../components/Layout'
@@ -15,6 +20,7 @@ import InventarioPage from '../pages/inventario/InventarioPage'
 import PickingPage from '../pages/picking/PickingPage'
 import TransferenciaPage from '../pages/transferencias/TransferenciaPage'
 
+// Componente que protege rutas privadas: redirige a /login si no est\u00e1 autenticado
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
@@ -24,7 +30,9 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Ruta p\u00fablica de inicio de sesi\u00f3n */}
         <Route path="/login" element={<LoginPage />} />
+        {/* Rutas privadas envueltas en Layout con sidebar y header */}
         <Route
           path="/"
           element={
@@ -46,6 +54,7 @@ export default function AppRouter() {
           <Route path="picking" element={<PickingPage />} />
           <Route path="transferencias" element={<TransferenciaPage />} />
         </Route>
+        {/* Ruta comod\u00edn: redirige al inicio */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

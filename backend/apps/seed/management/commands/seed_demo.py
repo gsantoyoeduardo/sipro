@@ -1,4 +1,30 @@
-﻿from datetime import date, timedelta
+﻿"""Comando de gestión de Django para sembrar datos demo en SIPRO WMS.
+
+Puebla la base de datos con información de ejemplo representativa que
+permite probar todas las funcionalidades del sistema sin necesidad de
+ingresar datos manualmente.
+
+**¿Qué datos crea?**
+
+- Empresa, sucursales y almacenes.
+- Catálogo completo de permisos, roles y usuarios demo.
+- Layout de almacén con zonas, pasillos, estantes, niveles y ubicaciones.
+- Grafo de navegación con nodos y conexiones.
+- Productos por categorías, lotes con fechas de vencimiento, inventario
+  en ubicaciones y movimientos de kardex.
+- Órdenes de picking en distintos estados (pendiente, en_proceso,
+  completado, cancelado) con incidencias.
+- Transferencias entre almacenes (pendiente y en_tránsito).
+
+**Uso:**
+
+.. code-block:: bash
+
+    python manage.py seed_demo
+    python manage.py seed_demo --reset
+"""
+
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
@@ -14,13 +40,25 @@ from src.infrastructure.models.transferencia_model import DetalleTransferencia, 
 
 
 class Command(BaseCommand):
+    """Comando ``seed_demo`` — siembra datos demo completos en la base de datos.
+
+    Ejecuta en orden: reset → header → empresa → permisos → roles → usuarios
+    → layout → inventario → picking → transferencias → resumen.
+    """
+
     help = 'Precarga datos demo para SIPRO WMS'
 
     def add_arguments(self, parser):
+        """Define los argumentos opcionales del comando."""
         parser.add_argument('--reset', action='store_true', help='Eliminar todo y recrear')
         parser.add_argument('--crear-todo', action='store_true', help='Alias de --reset')
 
     def handle(self, *args, **options):
+        """Punto de entrada principal del comando.
+
+        Orquesta todas las fases de la siembra. Deshabilita las señales de
+        auditoría durante la ejecución para evitar ruido en los logs.
+        """
         audit_signals.AUDIT_ENABLED = False
         try:
             if options['reset'] or options.get('crear_todo'):
@@ -43,16 +81,26 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _log(self, emoji, label, count=None):
+        """Imprime una línea de log con emoji y etiqueta opcional con contador."""
         if count is not None:
             self.stdout.write(f'  {emoji} {label}: {count}')
         else:
             self.stdout.write(f'  {emoji} {label}')
 
     def _section(self, title):
+        """Imprime un título de sección separado con una línea en blanco."""
         self.stdout.write('')
         self.stdout.write(title)
 
     def _safe_get_or_create(self, model, lookup, defaults):
+        """Versión segura de ``get_or_create`` que evita la condición de carrera.
+
+        Primero consulta con ``filter().first()`` y si no existe crea el
+        objeto fusionando ``lookup`` y ``defaults``.
+
+        Returns:
+            tuple: (instancia, creado) donde ``creado`` es booleano.
+        """
         existing = model.objects.filter(**lookup).first()
         if existing:
             return existing, False
@@ -63,6 +111,7 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _print_header(self):
+        """Imprime el encabezado decorativo del comando."""
         self.stdout.write('')
         self.stdout.write('=' * 60)
         self.stdout.write('  SIPRO WMS — Carga de Datos Demo')
@@ -73,6 +122,13 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _reset_all(self):
+        """Elimina todos los datos existentes en el orden correcto (hijos → padres).
+
+        Las tablas se borran en orden descendente de dependencias para
+        respetar las restricciones de clave foránea. Primero se eliminan
+        las sesiones, luego incidencias, picking, transferencias, kardex,
+        inventario, layout, roles/permisos y finalmente empresas.
+        """
         self.stdout.write('\n🗑  Eliminando datos existentes...')
 
         models = [
@@ -96,8 +152,15 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_empresa(self):
+        """Fase 1 — Crea la empresa demo, dos sucursales y dos almacenes.
+
+        - Empresa: SIPRO Demo S.A.C. (RUC 20123456789)
+        - Sucursales: Sede Central Lima y Sede Arequipa.
+        - Almacenes: Principal y Secundario (ambos en Lima).
+        """
         self._section('🏢 Empresa / Sucursales / Almacenes:')
 
+        # ── Empresa principal ─────────────────────────────────────────────
         empresa, _ = Empresa.objects.get_or_create(
             ruc='20123456789',
             defaults={
@@ -111,6 +174,7 @@ class Command(BaseCommand):
         self._log('🏢', 'Empresa', empresa.razonsocial)
         self._empresa = empresa
 
+        # ── Sucursales ────────────────────────────────────────────────────
         sucursales_map = {}
         for nombre, codigo, direccion in [
             ('Sede Central Lima', 'SEDE001', 'Av. Principal 456, Lima'),
@@ -126,6 +190,7 @@ class Command(BaseCommand):
         self._sucursal_lima = sucursales_map['SEDE001']
         self._sucursal_aqp = sucursales_map['SEDE002']
 
+        # ── Almacenes (en Lima) ───────────────────────────────────────────
         almacenes_map = {}
         for suc, nombre, codigo, desc in [
             (sucursales_map['SEDE001'], 'Almacén Principal', 'ALM001', 'Almacén principal de operaciones'),
@@ -152,6 +217,12 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_permisos(self):
+        """Fase 2 — Crea el catálogo de permisos del sistema (24 permisos).
+
+        Cada permiso tiene un código único (ej. ``ver_empresa``), un nombre
+        descriptivo y una descripción. Se almacenan en ``self._permisos``
+        para ser referenciados al asignarlos a roles.
+        """
         self._section('🔑 Permisos:')
 
         permisos_data = [
@@ -195,10 +266,19 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_roles(self):
+        """Fase 3 — Crea los roles y les asigna permisos.
+
+        Roles creados:
+        - **Administrador**: todos los permisos (acceso total).
+        - **Supervisor**: permisos ``ver_*`` + gestión operativa.
+        - **Operario**: permisos básicos de almacén (ver inventario/picking,
+          gestionar picking, registrar kardex).
+        """
         self._section('👥 Roles y asignación de permisos:')
 
         empresa = self._empresa
 
+        # ── Rol Administrador (todos los permisos) ────────────────────────
         rol_admin, _ = self._safe_get_or_create(
             Rol,
             {'idempresa': empresa, 'nombre': 'Administrador'},
@@ -209,6 +289,7 @@ class Command(BaseCommand):
         self._log('👤', 'Rol', f'{rol_admin.nombre} ({len(self._permisos)} permisos)')
         self._rol_admin = rol_admin
 
+        # ── Rol Supervisor (lectura + gestión) ────────────────────────────
         supervisor_codes = [
             k for k in self._permisos
             if k.startswith('ver_') or k in (
@@ -226,6 +307,7 @@ class Command(BaseCommand):
         self._log('👤', 'Rol', f'{rol_supervisor.nombre} ({len(supervisor_codes)} permisos)')
         self._rol_supervisor = rol_supervisor
 
+        # ── Rol Operario (permisos básicos) ───────────────────────────────
         operario_codes = [
             'ver_dashboard', 'ver_inventario', 'ver_picking',
             'gestionar_picking', 'registrar_kardex',
@@ -245,8 +327,18 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_usuarios(self):
+        """Fase 4 — Crea los usuarios demo y les asigna roles.
+
+        Usuarios:
+        - **admin** (``admin_sistema``): administrador global del sistema.
+        - **supervisor1** (``admin_empresa``): supervisor de operaciones.
+        - **operario1** (``operador``): operario de almacén.
+
+        Cada usuario se crea con ``update_or_create`` para ser reusable.
+        """
         self._section('👤 Usuarios:')
 
+        # ── Admin del sistema ─────────────────────────────────────────────
         admin, created = Usuario.objects.update_or_create(
             usuario='admin',
             defaults={
@@ -264,6 +356,7 @@ class Command(BaseCommand):
         self._log('👑', 'Usuario', f'{admin.usuario} (Admin)')
         self._admin = admin
 
+        # ── Supervisor ────────────────────────────────────────────────────
         supervisor, created = Usuario.objects.update_or_create(
             usuario='supervisor1',
             defaults={
@@ -280,6 +373,7 @@ class Command(BaseCommand):
         self._log('👤', 'Usuario', f'{supervisor.usuario} (Supervisor)')
         self._supervisor = supervisor
 
+        # ── Operario ──────────────────────────────────────────────────────
         operario, created = Usuario.objects.update_or_create(
             usuario='operario1',
             defaults={
@@ -301,9 +395,27 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_layout(self):
+        """Fase 5 — Construye el layout completo del almacén principal.
+
+        Fases dentro del layout:
+        1. **Zonas**: Recepción, Tránsito, Espera, Despacho, Almacenamiento
+           A (alta rotación) y B (baja rotación).
+        2. **Pasillos**: un pasillo vertical que cruza las zonas de servicio
+           y dos pasillos horizontales (Norte y Sur) en las zonas de almacén.
+        3. **Estantes**: 8 estantes (A1-A4 en pasillo Norte, B1-B4 en
+           pasillo Sur), cada uno con 3 niveles y 2 ubicaciones por nivel.
+        4. **Ubicaciones**: 30 ubicaciones físicas (8 estantes × 3 niveles
+           × 2 = 48, pero se toman las primeras 30 para este demo).
+        5. **Nodos**: 13 nodos del grafo de navegación (entrada,
+           intersecciones, puntos de recogida y salida).
+        6. **Conexiones**: 14 aristas que conectan los nodos formando la
+           red de rutas del almacén.
+        """
         self._section('🗺  Layout del Almacén:')
         almacen = self._almacen_principal
 
+        # ── Fase 1: Zonas ─────────────────────────────────────────────────
+        # Se definen 6 zonas con coordenadas y colores para visualización
         zonas_data = [
             ('Z-REC', 'Recepción', 'recepcion', 0, 0, 150, 120, '#4CAF50'),
             ('Z-TRANS', 'Zona Tránsito', 'almacenamiento', 0, 120, 150, 130, '#FFC107'),
@@ -322,10 +434,12 @@ class Command(BaseCommand):
             zonas.append(z)
         self._log('🗺', 'Zonas', len(zonas))
 
+        # Referencias a zonas específicas para la siguiente fase
         zona_alm_a = zonas[4]
         zona_alm_b = zonas[5]
         zona_trans = zonas[1]
 
+        # ── Fase 2: Pasillos ──────────────────────────────────────────────
         pasillos_data = [
             ('P-01', 'Pasillo Vertical', zona_trans, 150, 0, 50, 500, 'vertical'),
             ('P-02', 'Pasillo Norte', zona_alm_a, 200, 200, 600, 50, 'horizontal'),
@@ -344,6 +458,8 @@ class Command(BaseCommand):
         pasillo_norte = pasillos[1]
         pasillo_sur = pasillos[2]
 
+        # ── Fase 3: Estantes ──────────────────────────────────────────────
+        # 4 estantes en cada pasillo, con 3 niveles cada uno
         estantes_data = [
             ('E01', 'Estante A1', pasillo_norte, 220, 80, 'izquierda'),
             ('E02', 'Estante A2', pasillo_norte, 340, 80, 'izquierda'),
@@ -367,6 +483,7 @@ class Command(BaseCommand):
             estantes.append(e)
         self._log('📦', 'Estantes', len(estantes))
 
+        # ── Fase 4: Niveles (3 por estante) ───────────────────────────────
         niveles = []
         for estante in estantes:
             for k in range(1, 4):
@@ -378,6 +495,7 @@ class Command(BaseCommand):
                 niveles.append(n)
         self._log('📊', 'Niveles', len(niveles))
 
+        # ── Fase 4b: Ubicaciones (2 por nivel, código: E01-N1-U1) ─────────
         ubicaciones = []
         for nivel in niveles:
             for m in range(1, 3):
@@ -395,6 +513,7 @@ class Command(BaseCommand):
         self._log('📍', 'Ubicaciones', len(ubicaciones))
         self._ubicaciones = ubicaciones
 
+        # ── Fase 5: Nodos del grafo de navegación ─────────────────────────
         # Nodos sobre el Pasillo Vertical (x=150-200)
         # y sobre los Pasillos Norte (y=200-250) y Sur (y=450-500)
         nodos_data = [
@@ -422,6 +541,13 @@ class Command(BaseCommand):
             nodos.append(n)
         self._log('🔵', 'Nodos', len(nodos))
 
+        # ── Fase 6: Conexiones (aristas del grafo) ────────────────────────
+        # Se definen 14 conexiones que forman:
+        # - Eje vertical: Entrada → Int-N → Int-C → Int-S → Salida
+        # - Eje norte: Pick-A1 → Pick-A2 → Pick-A3 → Pick-A4
+        # - Eje sur: Pick-B1 → Pick-B2 → Pick-B3 → Pick-B4
+        # - Cruces vertical ↔ norte: Int-C → Pick-A1, Int-N → Pick-A4
+        # - Cruces vertical ↔ sur: Int-S → Pick-B1, Int-C → Pick-B4
         conexiones = []
         for origen_idx, destino_idx, distancia, tipo in [
             # Eje vertical (Pasillo Vertical)
@@ -463,8 +589,19 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_inventario(self):
+        """Fase 6 — Crea categorías, productos, lotes, inventario y kardex.
+
+        Fases:
+        1. **Categorías**: Electrónicos, Alimentos, Limpieza, Empaques, Bebidas.
+        2. **Productos**: 15 SKUs con precios, pesos y control de lotes.
+        3. **Lotes**: 10 lotes con fechas de producción/vencimiento para
+           productos perecibles (arroces, aceites, leches, etc.).
+        4. **Inventario**: 30 registros de stock distribuidos en ubicaciones.
+        5. **Kardex**: 20 movimientos de entrada/salida con saldos.
+        """
         self._section('📦 Inventario:')
 
+        # ── Fase 1: Categorías ────────────────────────────────────────────
         categorias = {}
         for nombre, desc in [
             ('Electrónicos', 'Dispositivos y componentes electrónicos'),
@@ -483,6 +620,9 @@ class Command(BaseCommand):
         cat_emp = categorias['Empaques']
         cat_beb = categorias['Bebidas']
 
+        # ── Fase 2: Productos ─────────────────────────────────────────────
+        # Cada producto tiene: SKU, nombre, categoría, descripción, unidad
+        # de medida, peso, volumen, precio costo/venta, y bandera maneja_lotes
         productos_data = [
             ('SKU-001', 'Laptop HP 15.6"', cat_elec, 'Laptop HP Pavilion 15.6 pulgadas', 'unidad', Decimal('2.500'), Decimal('0.015'), Decimal('1800.00'), Decimal('2500.00'), True),
             ('SKU-002', 'Monitor Dell 24"', cat_elec, 'Monitor LED Full HD 24 pulgadas', 'unidad', Decimal('4.000'), Decimal('0.030'), Decimal('600.00'), Decimal('900.00'), False),
@@ -523,6 +663,7 @@ class Command(BaseCommand):
         self._log('📦', 'Productos', len(productos))
         self._productos = productos
 
+        # ── Fase 3: Lotes (con fechas de vencimiento) ─────────────────────
         today = date.today()
         lotes = []
         for sku, num_lote, fp, fv, ci, ca in [
@@ -551,6 +692,7 @@ class Command(BaseCommand):
             lotes.append(l)
         self._log('🏷', 'Lotes', len(lotes))
 
+        # ── Fase 4: Inventario (stock por ubicación y lote) ───────────────
         ubicaciones = self._ubicaciones
         inv_entries = [
             (productos['SKU-001'], lotes[0], ubicaciones[0], 5),
@@ -593,6 +735,8 @@ class Command(BaseCommand):
             )
         self._log('📊', 'Inventario', len(inv_entries))
 
+        # ── Fase 5: Kardex (movimientos históricos) ───────────────────────
+        # Solo se crean si no existen (evita duplicados al re-ejecutar)
         if not Kardex.objects.exists():
             kardex_entries = [
                 (productos['SKU-001'], lotes[0], ubicaciones[0], 'entrada', 50, 0, 50),
@@ -636,6 +780,14 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_picking(self):
+        """Fase 7 — Crea órdenes de picking demo en distintos estados del flujo.
+
+        Órdenes:
+        - **PICK-2026-001**: pendiente, 3 detalles (arroz, detergente, cajas).
+        - **PICK-2026-002**: en proceso, 3 detalles con pickeo parcial.
+        - **PICK-2026-003**: completada, 3 detalles totalmente pickeados.
+        - **PICK-2026-004**: cancelada, 2 incidencias (faltante y dañado).
+        """
         self._section('📋 Picking:')
         almacen = self._almacen_principal
         ubicaciones = self._ubicaciones
@@ -646,6 +798,7 @@ class Command(BaseCommand):
         prod3 = prods['SKU-010']
         prod4 = prods['SKU-013']
 
+        # ── Orden 1: Pendiente ────────────────────────────────────────────
         op1, _ = OrdenPicking.objects.get_or_create(
             numero_orden='PICK-2026-001',
             defaults={
@@ -661,6 +814,7 @@ class Command(BaseCommand):
         self._make_detalle(op1, prod4, ubicaciones[27], 20, 0, 'pendiente')
         self._log('📋', 'Orden', f'{op1.numero_orden} (Pendiente)')
 
+        # ── Orden 2: En proceso (pickeo parcial) ──────────────────────────
         op2, _ = OrdenPicking.objects.get_or_create(
             numero_orden='PICK-2026-002',
             defaults={
@@ -676,6 +830,7 @@ class Command(BaseCommand):
         self._make_detalle(op2, prod3, ubicaciones[23], 8, 4, 'en_proceso')
         self._log('📋', 'Orden', f'{op2.numero_orden} (En Proceso)')
 
+        # ── Orden 3: Completada (pickeo total, sin incidencias) ───────────
         op3, _ = OrdenPicking.objects.get_or_create(
             numero_orden='PICK-2026-003',
             defaults={
@@ -692,6 +847,7 @@ class Command(BaseCommand):
         self._make_detalle(op3, prod4, ubicaciones[28], 50, 50, 'completado')
         self._log('📋', 'Orden', f'{op3.numero_orden} (Completado)')
 
+        # ── Orden 4: Cancelada con incidencias ────────────────────────────
         op4, _ = OrdenPicking.objects.get_or_create(
             numero_orden='PICK-2026-004',
             defaults={
@@ -707,11 +863,25 @@ class Command(BaseCommand):
         dp4c, _ = self._make_detalle(op4, prod3, ubicaciones[24], 15, 0, 'pendiente')
         self._log('📋', 'Orden', f'{op4.numero_orden} (Cancelado)')
 
+        # Incidencias asociadas a la orden cancelada
         self._make_incidencia(dp4a, 'faltante', 'Producto no encontrado en ubicación asignada', 10)
         self._make_incidencia(dp4b, 'danado', 'Cajas de embalaje presentan daños por humedad', 30)
         self._log('⚠', 'Incidencias', 2)
 
     def _make_detalle(self, orden, producto, ubicacion, solicitada, pickeada, estado):
+        """Crea (o recupera) un detalle de picking con los datos dados.
+
+        Args:
+            orden: Instancia de OrdenPicking.
+            producto: Instancia de Producto.
+            ubicacion: Instancia de Ubicacion.
+            solicitada: Cantidad solicitada.
+            pickeada: Cantidad realmente pickeada.
+            estado: Estado del detalle (pendiente, en_proceso, completado).
+
+        Returns:
+            tuple: (DetallePicking, creado) según _safe_get_or_create.
+        """
         return self._safe_get_or_create(
             DetallePicking,
             {'idorden': orden, 'idproducto': producto},
@@ -724,6 +894,17 @@ class Command(BaseCommand):
         )
 
     def _make_incidencia(self, detalle, tipo, descripcion, cantidad):
+        """Crea (o recupera) una incidencia asociada a un detalle de picking.
+
+        Args:
+            detalle: Instancia de DetallePicking.
+            tipo: Tipo de incidencia (faltante, danado, etc.).
+            descripcion: Texto descriptivo.
+            cantidad: Cantidad reportada como incidencia.
+
+        Returns:
+            tuple: (Incidencia, creado) según _safe_get_or_create.
+        """
         return self._safe_get_or_create(
             Incidencia,
             {'iddetalle': detalle, 'tipo': tipo},
@@ -740,11 +921,18 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_transferencias(self):
+        """Fase 8 — Crea transferencias demo entre el almacén principal y el secundario.
+
+        Transferencias:
+        - **TRF-2026-001**: pendiente, 3 productos perecibles (arroz, aceite, leche).
+        - **TRF-2026-002**: en tránsito, 3 productos con fecha de envío.
+        """
         self._section('🚛 Transferencias:')
         origen = self._almacen_principal
         destino = self._almacen_secundario
         prods = self._productos
 
+        # ── Transferencia 1: Pendiente ────────────────────────────────────
         t1, _ = Transferencia.objects.get_or_create(
             numero_transferencia='TRF-2026-001',
             defaults={
@@ -760,6 +948,7 @@ class Command(BaseCommand):
         self._make_det_transferencia(t1, prods['SKU-008'], 75)
         self._log('🚛', 'Transferencia', f'{t1.numero_transferencia} (Pendiente)')
 
+        # ── Transferencia 2: En tránsito ──────────────────────────────────
         t2, _ = Transferencia.objects.get_or_create(
             numero_transferencia='TRF-2026-002',
             defaults={
@@ -777,6 +966,16 @@ class Command(BaseCommand):
         self._log('🚛', 'Transferencia', f'{t2.numero_transferencia} (En Tránsito)')
 
     def _make_det_transferencia(self, transferencia, producto, cantidad):
+        """Crea (o recupera) un detalle de transferencia.
+
+        Args:
+            transferencia: Instancia de Transferencia.
+            producto: Instancia de Producto.
+            cantidad: Cantidad a transferir.
+
+        Returns:
+            tuple: (DetalleTransferencia, creado).
+        """
         return self._safe_get_or_create(
             DetalleTransferencia,
             {'idtransferencia': transferencia, 'idproducto': producto},
@@ -788,11 +987,13 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _print_summary(self):
+        """Imprime el resumen final con conteo de cada entidad y credenciales demo."""
         self.stdout.write('')
         self.stdout.write('=' * 60)
         self.stdout.write('  RESUMEN DE CARGA')
         self.stdout.write('=' * 60)
 
+        # Itera sobre todas las entidades y muestra su conteo con emoji
         for nombre, modelo in [
             ('Empresas', Empresa),
             ('Sucursales', Sucursal),
@@ -824,6 +1025,7 @@ class Command(BaseCommand):
             emoji = '✅' if count > 0 else '⚠'
             self.stdout.write(f'  {emoji} {nombre}: {count}')
 
+        # Tabla de credenciales para que el usuario pueda probar el sistema
         self.stdout.write('')
         self.stdout.write('  🔐 Credenciales de acceso:')
         self.stdout.write('  ─────────────────────────────────')

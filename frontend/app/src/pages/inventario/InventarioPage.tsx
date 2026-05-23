@@ -10,11 +10,17 @@ import type { Categoria, Producto, Lote, InventarioItem, KardexItem, PickingResu
 
 type TabView = 'categorias' | 'productos' | 'lotes' | 'inventario' | 'kardex' | 'picking'
 
+/**
+ * Página de Inventario con 6 pestañas.
+ * Incluye: Categorías, Productos, Lotes, Inventario, Kardex y Picking FEFO/FIFO.
+ * Cada pestaña renderiza su propio subcomponente independiente.
+ */
 export default function InventarioPage() {
   const [view, setView] = useState<TabView>('categorias')
 
   return (
     <div>
+      {/* Barra de pestañas de navegación principal */}
       <div className="flex gap-2 mb-4 flex-wrap">
         {[
           { key: 'categorias', label: 'Categorías' },
@@ -41,6 +47,20 @@ export default function InventarioPage() {
   )
 }
 
+/**
+ * ABM de Categorías.
+ * CRUD completo con soporte jerárquico (categoría padre).
+ * Cada categoría puede tener una categoría padre (relación árbol).
+ *
+ * Estado:
+ *   - items: lista visible de categorías.
+ *   - allCats: lista completa para el selector de categoría padre.
+ *   - form: datos del formulario (nombre, descripción, padre).
+ *   - editing: categoría en edición (null = creación).
+ *
+ * Llamadas API:
+ *   - categoriaService.list(), .create(), .update(), .remove(), .toggleEstado()
+ */
 function CategoriasABM() {
   const [items, setItems] = useState<Categoria[]>([])
   const [allCats, setAllCats] = useState<Categoria[]>([])
@@ -54,6 +74,7 @@ function CategoriasABM() {
   const [confirmDelete, setConfirmDelete] = useState<Categoria | null>(null)
   const [confirmToggle, setConfirmToggle] = useState<Categoria | null>(null)
 
+  // Carga la lista completa de categorías al montar
   const fetchData = async () => {
     try {
       const catRes = await categoriaService.list()
@@ -163,6 +184,21 @@ function CategoriasABM() {
   )
 }
 
+/**
+ * ABM de Productos.
+ * CRUD completo con filtro por categoría y búsqueda por texto.
+ * Incluye campos de precio, stock mínimo/máximo, peso, volumen y control de lotes.
+ *
+ * Estado:
+ *   - items: lista de productos (filtrable por categoría y búsqueda).
+ *   - categorias: para el selector en filtro y formulario.
+ *   - form: todos los campos del producto (incluyendo precios, stock, etc.).
+ *   - editing: producto en edición.
+ *
+ * Llamadas API:
+ *   - productoService.list(), .create(), .update(), .remove(), .toggleEstado()
+ *   - categoriaService.list()
+ */
 function ProductosABM() {
   const [items, setItems] = useState<Producto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -178,6 +214,7 @@ function ProductosABM() {
   const [confirmDelete, setConfirmDelete] = useState<Producto | null>(null)
   const [confirmToggle, setConfirmToggle] = useState<Producto | null>(null)
 
+  // Carga productos y categorías; se refiltra al cambiar filterCat o search
   const fetchData = async () => {
     try {
       const [pRes, cRes] = await Promise.all([productoService.list(filterCat || undefined, search || undefined), categoriaService.list()])
@@ -357,6 +394,22 @@ function ProductosABM() {
   )
 }
 
+/**
+ * ABM de Lotes.
+ * CRUD completo con filtro por producto. Los lotes tienen fecha de producción,
+ * fecha de vencimiento, cantidad inicial y cantidad actual.
+ * Solo se muestran productos que manejan lotes (maneja_lotes = true).
+ *
+ * Estado:
+ *   - items: lista de lotes.
+ *   - productos: para el selector de productos (solo los que manejan lotes).
+ *   - form: datos del lote (fechas, cantidades).
+ *   - editing: lote en edición.
+ *
+ * Llamadas API:
+ *   - loteService.list(), .create(), .update(), .remove(), .toggleEstado()
+ *   - productoService.list()
+ */
 function LotesABM() {
   const [items, setItems] = useState<Lote[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
@@ -371,6 +424,7 @@ function LotesABM() {
   const [confirmDelete, setConfirmDelete] = useState<Lote | null>(null)
   const [confirmToggle, setConfirmToggle] = useState<Lote | null>(null)
 
+  // Carga lotes y productos; se refiltra al cambiar filterProd
   const fetchData = async () => {
     try {
       const [lRes, pRes] = await Promise.all([loteService.list(filterProd || undefined), productoService.list()])
@@ -515,6 +569,21 @@ function LotesABM() {
   )
 }
 
+/**
+ * ABM de Inventario (stock por ubicación).
+ * CRUD completo con filtro por producto. Cada registro asocia un producto
+ * a una ubicación física, con cantidad y lote opcional.
+ *
+ * Estado:
+ *   - items: registros de inventario.
+ *   - productos: para el selector en filtro y formulario.
+ *   - form: producto, ubicación, lote y cantidad.
+ *   - editing: registro en edición.
+ *
+ * Llamadas API:
+ *   - inventarioService.list(), .create(), .update(), .remove(), .toggleEstado()
+ *   - productoService.list()
+ */
 function InventarioABM() {
   const [items, setItems] = useState<InventarioItem[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
@@ -529,6 +598,7 @@ function InventarioABM() {
   const [confirmDelete, setConfirmDelete] = useState<InventarioItem | null>(null)
   const [confirmToggle, setConfirmToggle] = useState<InventarioItem | null>(null)
 
+  // Carga inventario y productos; se refiltra al cambiar filterProd
   const fetchData = async () => {
     try {
       const [iRes, pRes] = await Promise.all([inventarioService.list(filterProd || undefined), productoService.list()])
@@ -652,6 +722,19 @@ function InventarioABM() {
   )
 }
 
+/**
+ * Vista de Kardex (historial de movimientos de inventario).
+ * Muestra una tabla con todos los movimientos (entradas, salidas, ajustes, transferencias)
+ * filtrable por producto. Solo lectura (sin modificación).
+ *
+ * Estado:
+ *   - items: movimientos de kardex.
+ *   - filterProd: filtro por producto.
+ *
+ * Llamadas API:
+ *   - kardexService.list() — lista de movimientos (con filtro opcional).
+ *   - productoService.list()
+ */
 function KardexView() {
   const [items, setItems] = useState<KardexItem[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
@@ -659,6 +742,7 @@ function KardexView() {
   const [filterProd, setFilterProd] = useState('')
   const addToast = useToastStore((state) => state.addToast)
 
+  // Carga movimientos de kardex y productos; se refiltra al cambiar filterProd
   const fetchData = () => {
     setLoading(true)
     Promise.all([kardexService.list(filterProd || undefined), productoService.list()])
@@ -701,6 +785,22 @@ function KardexView() {
   )
 }
 
+/**
+ * Vista de Picking FEFO/FIFO.
+ * Permite seleccionar un producto, cantidad y estrategia (FEFO = Primero en Vencer,
+ * FIFO = Primero en Entrar), y calcula qué lotes/ubicaciones se deben pickear
+ * para cubrir la cantidad solicitada.
+ *
+ * Estado:
+ *   - productos: lista para el selector.
+ *   - selectedProducto / cantidad / estrategia: parámetros del cálculo.
+ *   - result: resultado del cálculo (lista de picks, info de completitud).
+ *   - error: mensaje de error si el cálculo falla.
+ *
+ * Llamadas API:
+ *   - productoService.list()
+ *   - inventarioService.picking(producto, cantidad, estrategia)
+ */
 function PickingView() {
   const [productos, setProductos] = useState<Producto[]>([])
   const [selectedProducto, setSelectedProducto] = useState('')
@@ -711,10 +811,12 @@ function PickingView() {
   const [loading, setLoading] = useState(false)
   const addToast = useToastStore((state) => state.addToast)
 
+  // Carga la lista de productos al montar
   useEffect(() => {
     productoService.list().then(({ data }) => setProductos(data.results)).catch(() => { addToast('error', 'Error al cargar productos') })
   }, [])
 
+  // Ejecuta el cálculo de picking FEFO/FIFO en el backend
   const handleCalcular = async () => {
     if (!selectedProducto) return
     const num = parseFloat(cantidad)

@@ -1,3 +1,8 @@
+﻿/**
+ * P\u00e1gina de administraci\u00f3n de Nodos y Conexiones del layout.
+ * Gestiona el CRUD de nodos (puntos en el mapa del almac\u00e9n) y
+ * de conexiones (aristas entre nodos) con validaciones cruzadas.
+ */
 import { useState, useEffect } from 'react'
 import DataTable from '../../components/DataTable'
 import Modal from '../../components/Modal'
@@ -10,29 +15,37 @@ import { validateRequired, validatePositive, validateNotEqual } from '../../util
 import type { Almacen, Nodo, Conexion } from '../../types'
 
 export default function NodosPage() {
+  // Estado de nodos, conexiones y almacenes disponibles
   const [nodos, setNodos] = useState<Nodo[]>([])
   const [conexiones, setConexiones] = useState<Conexion[]>([])
   const [almacenes, setAlmacenes] = useState<Almacen[]>([])
   const [loading, setLoading] = useState(true)
+  // Control de modales: nodo y conexi\u00f3n
   const [modalOpen, setModalOpen] = useState(false)
   const [conexModalOpen, setConexModalOpen] = useState(false)
   const [editing, setEditing] = useState<Nodo | null>(null)
+  // Filtro por almac\u00e9n
   const [filterAlmacen, setFilterAlmacen] = useState('')
   const addToast = useToastStore((state) => state.addToast)
+  // Errores de validaci\u00f3n por campo
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  // Datos del formulario de nodo
   const [form, setForm] = useState({
     idalmacen: '', nombre: '', tipo: 'interseccion' as string,
     coordenada_x: 0, coordenada_y: 0, idubicacion: '',
   })
+  // Datos del formulario de conexi\u00f3n
   const [conexForm, setConexForm] = useState({
     idnodoorigen: '', idnododestino: '', distancia: 0, tipo: 'pasillo' as string, bidireccional: true,
   })
 
+  // Confirmaciones para acciones destructivas (nodos y conexiones)
   const [confirmDeleteNodo, setConfirmDeleteNodo] = useState<Nodo | null>(null)
   const [confirmToggleNodo, setConfirmToggleNodo] = useState<Nodo | null>(null)
   const [confirmDeleteConex, setConfirmDeleteConex] = useState<Conexion | null>(null)
   const [confirmToggleConex, setConfirmToggleConex] = useState<Conexion | null>(null)
 
+  // Carga inicial de nodos, conexiones y almacenes desde la API
   const fetchData = async () => {
     try {
       const [nRes, cRes, aRes] = await Promise.all([
@@ -46,8 +59,10 @@ export default function NodosPage() {
     } catch { addToast('error', 'Error al cargar datos') } finally { setLoading(false) }
   }
 
+  // Recarga datos cuando cambia el filtro de almac\u00e9n
   useEffect(() => { fetchData() }, [filterAlmacen])
 
+  // Valida campos obligatorios del formulario de nodo
   const validateNodo = (): boolean => {
     const e: Record<string, string> = {}
     const v1 = validateRequired(form.idalmacen, 'Almacén'); if (v1) e.idalmacen = v1
@@ -56,6 +71,7 @@ export default function NodosPage() {
     return Object.keys(e).length === 0
   }
 
+  // Crea o actualiza el nodo, convirtiendo coordenadas a n\u00famero
   const saveNodoFn = async () => {
     const data = {
       ...form,
@@ -74,6 +90,7 @@ export default function NodosPage() {
 
   const handleSubmitNodo = (e: React.FormEvent) => { e.preventDefault(); if (validateNodo()) handleSaveNodo() }
 
+  // Valida la conexi\u00f3n: origen, destino, distancia positiva y nodos distintos
   const validateConex = (): boolean => {
     const e: Record<string, string> = {}
     const v1 = validateRequired(conexForm.idnodoorigen, 'Nodo Origen'); if (v1) e.idnodoorigen = v1
@@ -84,6 +101,7 @@ export default function NodosPage() {
     return Object.keys(e).length === 0
   }
 
+  // Crea la conexi\u00f3n con la distancia convertida a n\u00famero
   const saveConexFn = async () => {
     const data = { ...conexForm, distancia: Number(conexForm.distancia) }
     await conexionService.create(data)
@@ -96,28 +114,34 @@ export default function NodosPage() {
 
   const handleSubmitConex = (e: React.FormEvent) => { e.preventDefault(); if (validateConex()) handleSaveConex() }
 
+  // Confirmaci\u00f3n de eliminaci\u00f3n de nodo
   const { submit: handleDeleteNodoConfirm, isSubmitting: deletingNodo } = useSubmit(
     () => nodoService.remove(confirmDeleteNodo!.idnodo),
     { successMessage: 'Nodo eliminado', onSuccess: () => { setConfirmDeleteNodo(null); fetchData() } }
   )
 
+  // Confirmaci\u00f3n de activaci\u00f3n/desactivaci\u00f3n de nodo
   const { submit: handleToggleNodoConfirm, isSubmitting: togglingNodo } = useSubmit(
     () => nodoService.toggleEstado(confirmToggleNodo!.idnodo),
     { successMessage: 'Estado actualizado', onSuccess: () => { setConfirmToggleNodo(null); fetchData() } }
   )
 
+  // Confirmaci\u00f3n de eliminaci\u00f3n de conexi\u00f3n
   const { submit: handleDeleteConexConfirm, isSubmitting: deletingConex } = useSubmit(
     () => conexionService.remove(confirmDeleteConex!.idconexion),
     { successMessage: 'Conexión eliminada', onSuccess: () => { setConfirmDeleteConex(null); fetchData() } }
   )
 
+  // Confirmaci\u00f3n de activaci\u00f3n/desactivaci\u00f3n de conexi\u00f3n
   const { submit: handleToggleConexConfirm, isSubmitting: togglingConex } = useSubmit(
     () => conexionService.toggleEstado(confirmToggleConex!.idconexion),
     { successMessage: 'Estado actualizado', onSuccess: () => { setConfirmToggleConex(null); fetchData() } }
   )
 
-  const ic = (key: string) => `w-full px-3 py-2 border rounded-lg ${fieldErrors[key] ? 'border-red-500' : ''}`
+  // Genera clases CSS para inputs con error (sin bordes redondeados para compatibilidad)
+  const ic = (key: string) => w-full px-3 py-2 border rounded-lg 
 
+  // Columnas de la tabla de nodos
   const nodoColumns = [
     { key: 'nombre', header: 'Nombre' },
     { key: 'tipo', header: 'Tipo' },
@@ -127,13 +151,14 @@ export default function NodosPage() {
     {
       key: 'estado', header: 'Estado',
       render: (item: Nodo) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${item.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <span className={px-2 py-1 text-xs rounded-full }>
           {item.estado ? 'Activo' : 'Inactivo'}
         </span>
       ),
     },
   ]
 
+  // Columnas de la tabla de conexiones
   const conexColumns = [
     {
       key: 'origen',
@@ -155,7 +180,7 @@ export default function NodosPage() {
     {
       key: 'estado', header: 'Estado',
       render: (item: Conexion) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${item.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <span className={px-2 py-1 text-xs rounded-full }>
           {item.estado ? 'Activo' : 'Inactivo'}
         </span>
       ),
@@ -164,6 +189,7 @@ export default function NodosPage() {
 
   return (
     <div>
+      {/* Encabezado de nodos con filtro por almac\u00e9n y bot\u00f3n de nuevo nodo */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-800">Nodos</h1>
@@ -180,6 +206,7 @@ export default function NodosPage() {
         </button>
       </div>
 
+      {/* Tabla de nodos */}
       <div className="bg-white rounded-lg shadow mb-8">
         <DataTable columns={nodoColumns} data={nodos} loading={loading}
           actions={(item) => (
@@ -193,6 +220,7 @@ export default function NodosPage() {
           )} />
       </div>
 
+      {/* Encabezado de conexiones con bot\u00f3n de nueva conexi\u00f3n */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Conexiones</h2>
         <button
@@ -203,6 +231,7 @@ export default function NodosPage() {
         </button>
       </div>
 
+      {/* Tabla de conexiones */}
       <div className="bg-white rounded-lg shadow">
         <DataTable columns={conexColumns} data={conexiones} loading={loading}
           actions={(item) => (
@@ -214,8 +243,10 @@ export default function NodosPage() {
           )} />
       </div>
 
+      {/* Modal de creaci\u00f3n/edici\u00f3n de nodo */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar Nodo' : 'Nuevo Nodo'} size="lg">
         <form onSubmit={handleSubmitNodo} className="space-y-4">
+          {/* Selector de almac\u00e9n (obligatorio) */}
           <div><label className="block text-sm font-medium mb-1">Almacén *</label>
             <select value={form.idalmacen} onChange={(e) => { setForm({ ...form, idalmacen: e.target.value }); setFieldErrors((p) => ({ ...p, idalmacen: '' })) }} className={ic('idalmacen')} required>
               <option value="">Seleccionar</option>
@@ -223,6 +254,7 @@ export default function NodosPage() {
             </select>
             {fieldErrors.idalmacen && <p className="text-red-500 text-xs mt-1">{fieldErrors.idalmacen}</p>}
           </div>
+          {/* Campos de nombre y tipo de nodo */}
           <div className="grid grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium mb-1">Nombre *</label><input type="text" value={form.nombre} onChange={(e) => { setForm({ ...form, nombre: e.target.value }); setFieldErrors((p) => ({ ...p, nombre: '' })) }} className={ic('nombre')} required />
               {fieldErrors.nombre && <p className="text-red-500 text-xs mt-1">{fieldErrors.nombre}</p>}
@@ -233,10 +265,12 @@ export default function NodosPage() {
               </select>
             </div>
           </div>
+          {/* Coordenadas X e Y del nodo */}
           <div className="grid grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium mb-1">Coordenada X *</label><input type="number" value={form.coordenada_x} onChange={(e) => setForm({ ...form, coordenada_x: Number(e.target.value) })} className="w-full px-3 py-2 border rounded-lg" required /></div>
             <div><label className="block text-sm font-medium mb-1">Coordenada Y *</label><input type="number" value={form.coordenada_y} onChange={(e) => setForm({ ...form, coordenada_y: Number(e.target.value) })} className="w-full px-3 py-2 border rounded-lg" required /></div>
           </div>
+          {/* Botones de acci\u00f3n del formulario de nodo */}
           <div className="flex justify-end gap-3 pt-4">
             <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button>
             <button type="submit" disabled={savingNodo} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
@@ -247,8 +281,10 @@ export default function NodosPage() {
         </form>
       </Modal>
 
+      {/* Modal de creaci\u00f3n de conexi\u00f3n */}
       <Modal isOpen={conexModalOpen} onClose={() => setConexModalOpen(false)} title="Nueva Conexión">
         <form onSubmit={handleSubmitConex} className="space-y-4">
+          {/* Selector de nodo origen (obligatorio) */}
           <div><label className="block text-sm font-medium mb-1">Nodo Origen *</label>
             <select value={conexForm.idnodoorigen} onChange={(e) => { setConexForm({ ...conexForm, idnodoorigen: e.target.value }); setFieldErrors((p) => ({ ...p, idnodoorigen: '' })) }} className={ic('idnodoorigen')} required>
               <option value="">Seleccionar</option>
@@ -256,6 +292,7 @@ export default function NodosPage() {
             </select>
             {fieldErrors.idnodoorigen && <p className="text-red-500 text-xs mt-1">{fieldErrors.idnodoorigen}</p>}
           </div>
+          {/* Selector de nodo destino (obligatorio, debe ser distinto al origen) */}
           <div><label className="block text-sm font-medium mb-1">Nodo Destino *</label>
             <select value={conexForm.idnododestino} onChange={(e) => { setConexForm({ ...conexForm, idnododestino: e.target.value }); setFieldErrors((p) => ({ ...p, idnododestino: '' })) }} className={ic('idnododestino')} required>
               <option value="">Seleccionar</option>
@@ -263,6 +300,7 @@ export default function NodosPage() {
             </select>
             {fieldErrors.idnododestino && <p className="text-red-500 text-xs mt-1">{fieldErrors.idnododestino}</p>}
           </div>
+          {/* Distancia y tipo de conexi\u00f3n */}
           <div className="grid grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium mb-1">Distancia (m) *</label><input type="number" step="0.01" value={conexForm.distancia} onChange={(e) => { setConexForm({ ...conexForm, distancia: Number(e.target.value) }); setFieldErrors((p) => ({ ...p, distancia: '' })) }} className={ic('distancia')} required />
               {fieldErrors.distancia && <p className="text-red-500 text-xs mt-1">{fieldErrors.distancia}</p>}
@@ -273,10 +311,12 @@ export default function NodosPage() {
               </select>
             </div>
           </div>
+          {/* Checkbox de conexi\u00f3n bidireccional */}
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={conexForm.bidireccional} onChange={(e) => setConexForm({ ...conexForm, bidireccional: e.target.checked })} />
             Bidireccional
           </label>
+          {/* Botones de acci\u00f3n del formulario de conexi\u00f3n */}
           <div className="flex justify-end gap-3 pt-4">
             <button type="button" onClick={() => setConexModalOpen(false)} className="px-4 py-2 border rounded-lg">Cancelar</button>
             <button type="submit" disabled={savingConex} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
@@ -287,10 +327,11 @@ export default function NodosPage() {
         </form>
       </Modal>
 
-      <ConfirmDialog isOpen={!!confirmDeleteNodo} onClose={() => setConfirmDeleteNodo(null)} onConfirm={() => handleDeleteNodoConfirm()} title="Eliminar Nodo" message={`¿Está seguro de eliminar "${confirmDeleteNodo?.nombre}"?`} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deletingNodo} />
-      <ConfirmDialog isOpen={!!confirmToggleNodo} onClose={() => setConfirmToggleNodo(null)} onConfirm={() => handleToggleNodoConfirm()} title={confirmToggleNodo?.estado ? 'Desactivar Nodo' : 'Activar Nodo'} message={`¿Está seguro de ${confirmToggleNodo?.estado ? 'desactivar' : 'activar'} "${confirmToggleNodo?.nombre}"?`} confirmLabel={confirmToggleNodo?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={togglingNodo} />
+      {/* Di\u00e1logos de confirmaci\u00f3n para nodos y conexiones */}
+      <ConfirmDialog isOpen={!!confirmDeleteNodo} onClose={() => setConfirmDeleteNodo(null)} onConfirm={() => handleDeleteNodoConfirm()} title="Eliminar Nodo" message={¿Está seguro de eliminar ""?} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deletingNodo} />
+      <ConfirmDialog isOpen={!!confirmToggleNodo} onClose={() => setConfirmToggleNodo(null)} onConfirm={() => handleToggleNodoConfirm()} title={confirmToggleNodo?.estado ? 'Desactivar Nodo' : 'Activar Nodo'} message={¿Está seguro de  ""?} confirmLabel={confirmToggleNodo?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={togglingNodo} />
       <ConfirmDialog isOpen={!!confirmDeleteConex} onClose={() => setConfirmDeleteConex(null)} onConfirm={() => handleDeleteConexConfirm()} title="Eliminar Conexión" message="¿Está seguro de eliminar la conexión?" confirmLabel="Eliminar" confirmVariant="danger" isLoading={deletingConex} />
-      <ConfirmDialog isOpen={!!confirmToggleConex} onClose={() => setConfirmToggleConex(null)} onConfirm={() => handleToggleConexConfirm()} title={confirmToggleConex?.estado ? 'Desactivar Conexión' : 'Activar Conexión'} message={`¿Está seguro de ${confirmToggleConex?.estado ? 'desactivar' : 'activar'} la conexión?`} confirmLabel={confirmToggleConex?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={togglingConex} />
+      <ConfirmDialog isOpen={!!confirmToggleConex} onClose={() => setConfirmToggleConex(null)} onConfirm={() => handleToggleConexConfirm()} title={confirmToggleConex?.estado ? 'Desactivar Conexión' : 'Activar Conexión'} message={¿Está seguro de  la conexión?} confirmLabel={confirmToggleConex?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={togglingConex} />
     </div>
   )
 }

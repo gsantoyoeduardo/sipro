@@ -1,3 +1,8 @@
+/**
+ * Página de administración de Usuarios.
+ * Gestiona el CRUD completo de usuarios del sistema: listar, crear, editar,
+ * eliminar, activar/desactivar, resetear contraseña y asignar roles.
+ */
 import { useState, useEffect } from 'react'
 import DataTable from '../../components/DataTable'
 import Modal from '../../components/Modal'
@@ -9,20 +14,27 @@ import { validateRequired, validateEmail, validatePasswordStrength } from '../..
 import type { Usuario, Rol } from '../../types'
 
 export default function UsuariosPage() {
+  // Estado de la lista de usuarios y roles disponibles
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
   const [loading, setLoading] = useState(true)
+  // Control del modal de creación/edición
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Usuario | null>(null)
   const addToast = useToastStore((state) => state.addToast)
+  // Errores de validación por campo
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  // Datos del formulario
   const [form, setForm] = useState({ nombres: '', apellidos: '', correo: '', usuario: '', telefono: '', idempresa: '', password: '' })
+  // Roles seleccionados en el formulario
   const [selectedRoles, setSelectedRoles] = useState<string[]>([])
 
+  // Confirmaciones para acciones destructivas
   const [confirmDelete, setConfirmDelete] = useState<Usuario | null>(null)
   const [confirmToggle, setConfirmToggle] = useState<Usuario | null>(null)
   const [confirmResetPassword, setConfirmResetPassword] = useState<Usuario | null>(null)
 
+  // Carga inicial de usuarios y roles desde la API
   const fetchData = async () => {
     try {
       const [usrRes, rolRes] = await Promise.all([usuarioService.list(), rolService.list()])
@@ -33,6 +45,7 @@ export default function UsuariosPage() {
 
   useEffect(() => { fetchData() }, [])
 
+  // Prepara el formulario para crear un nuevo usuario
   const handleOpenCreate = () => {
     setEditing(null)
     setForm({ nombres: '', apellidos: '', correo: '', usuario: '', telefono: '', idempresa: '', password: '' })
@@ -41,6 +54,7 @@ export default function UsuariosPage() {
     setModalOpen(true)
   }
 
+  // Prepara el formulario para editar un usuario existente
   const handleOpenEdit = (item: Usuario) => {
     setEditing(item)
     setForm({ nombres: item.nombres, apellidos: item.apellidos, correo: item.correo, usuario: item.usuario, telefono: item.telefono || '', idempresa: item.idempresa || '', password: '' })
@@ -49,6 +63,7 @@ export default function UsuariosPage() {
     setModalOpen(true)
   }
 
+  // Valida los campos del formulario antes de enviar
   const validate = (): boolean => {
     const e: Record<string, string> = {}
     const r = validateRequired(form.nombres, 'Nombres'); if (r) e.nombres = r
@@ -62,6 +77,7 @@ export default function UsuariosPage() {
     return Object.keys(e).length === 0
   }
 
+  // Función que persiste el usuario (crea o actualiza según corresponda)
   const saveFn = async () => {
     if (editing) {
       const { password, ...updateData } = form
@@ -73,6 +89,7 @@ export default function UsuariosPage() {
     }
   }
 
+  // Hook que maneja el envío con estado de carga, éxito y error
   const { submit: handleSave, isSubmitting } = useSubmit(saveFn, {
     successMessage: editing ? 'Usuario actualizado' : 'Usuario creado',
     onSuccess: () => { setModalOpen(false); fetchData() },
@@ -80,23 +97,28 @@ export default function UsuariosPage() {
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (validate()) handleSave() }
 
+  // Confirmación y ejecución de eliminación de usuario
   const { submit: handleDeleteConfirm, isSubmitting: deleting } = useSubmit(
     () => usuarioService.remove(confirmDelete!.idusuario),
     { successMessage: 'Usuario eliminado', onSuccess: () => { setConfirmDelete(null); fetchData() } }
   )
 
+  // Confirmación y ejecución de activación/desactivación de usuario
   const { submit: handleToggleConfirm, isSubmitting: toggling } = useSubmit(
     () => usuarioService.toggleEstado(confirmToggle!.idusuario),
     { successMessage: 'Estado actualizado', onSuccess: () => { setConfirmToggle(null); fetchData() } }
   )
 
+  // Confirmación y ejecución de reseteo de contraseña
   const { submit: handleResetConfirm, isSubmitting: resetting } = useSubmit(
     () => usuarioService.resetPassword(confirmResetPassword!.idusuario),
     { successMessage: 'Contrase\u00f1a reseteada exitosamente', onSuccess: () => setConfirmResetPassword(null) }
   )
 
+  // Genera clases CSS condicionales para inputs con error
   const ic = (key: string) => `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none ${fieldErrors[key] ? 'border-red-500' : ''}`
 
+  // Columnas de la tabla de usuarios
   const columns = [
     { key: 'nombre', header: 'Nombre', render: (item: Usuario) => `${item.nombres} ${item.apellidos}` },
     { key: 'usuario', header: 'Usuario' },
@@ -107,6 +129,7 @@ export default function UsuariosPage() {
     )},
   ]
 
+  // Botones de acción por fila (editar, activar/desactivar, reset pass, eliminar)
   const actions = (item: Usuario) => (
     <>
       <button onClick={() => handleOpenEdit(item)} className="text-blue-600 hover:text-blue-800">Editar</button>
@@ -118,16 +141,20 @@ export default function UsuariosPage() {
 
   return (
     <div>
+      {/* Encabezado con título y botón de nuevo usuario */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Usuarios</h1>
         <button onClick={handleOpenCreate} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Nuevo Usuario</button>
       </div>
+      {/* Tabla de usuarios */}
       <div className="bg-white rounded-lg shadow">
         <DataTable columns={columns} data={usuarios} loading={loading} actions={actions} />
       </div>
 
+      {/* Modal de creación/edición de usuario */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar Usuario' : 'Nuevo Usuario'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Campos de nombres y apellidos */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombres *</label>
@@ -140,6 +167,7 @@ export default function UsuariosPage() {
               {fieldErrors.apellidos && <p className="text-red-500 text-xs mt-1">{fieldErrors.apellidos}</p>}
             </div>
           </div>
+          {/* Campos de usuario y correo */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Usuario *</label>
@@ -152,6 +180,7 @@ export default function UsuariosPage() {
               {fieldErrors.correo && <p className="text-red-500 text-xs mt-1">{fieldErrors.correo}</p>}
             </div>
           </div>
+          {/* Campos de teléfono y contraseña (solo en creación) */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tel\u00e9fono</label>
@@ -165,6 +194,7 @@ export default function UsuariosPage() {
               </div>
             )}
           </div>
+          {/* Selector de roles multiselección */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Roles</label>
             <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg p-3">
@@ -176,6 +206,7 @@ export default function UsuariosPage() {
               ))}
             </div>
           </div>
+          {/* Botones de acción del formulario */}
           <div className="flex justify-end gap-3 pt-4">
             <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition">Cancelar</button>
             <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2">
@@ -186,6 +217,7 @@ export default function UsuariosPage() {
         </form>
       </Modal>
 
+      {/* Diálogos de confirmación para eliminar, activar/desactivar y resetear contraseña */}
       <ConfirmDialog isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={() => handleDeleteConfirm()} title="Eliminar Usuario" message={`\u00bfEst\u00e1 seguro de eliminar a "${confirmDelete?.nombres}"?`} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deleting} />
       <ConfirmDialog isOpen={!!confirmToggle} onClose={() => setConfirmToggle(null)} onConfirm={() => handleToggleConfirm()} title={confirmToggle?.estado ? 'Desactivar Usuario' : 'Activar Usuario'} message={`\u00bfEst\u00e1 seguro de ${confirmToggle?.estado ? 'desactivar' : 'activar'} a "${confirmToggle?.nombres}"?`} confirmLabel={confirmToggle?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={toggling} />
       <ConfirmDialog isOpen={!!confirmResetPassword} onClose={() => setConfirmResetPassword(null)} onConfirm={() => handleResetConfirm()} title="Resetear Contrase\u00f1a" message={`\u00bfEst\u00e1 seguro de resetear la contrase\u00f1a de "${confirmResetPassword?.nombres}"?`} confirmLabel="Resetear" confirmVariant="primary" isLoading={resetting} />
