@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../api/axios'
+import { authService } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 
 export default function LoginPage() {
@@ -16,20 +16,10 @@ export default function LoginPage() {
     setError('')
     setIsSubmitting(true)
     try {
-      console.log('[Login] Attempting login with:', { usuario })
-      const { data } = await api.post('/portal/auth/', { usuario, password })
-      console.log('[Login] Login response:', {
-        user: data.user,
-        hasAccess: !!data.access,
-        hasRefresh: !!data.refresh,
-        userType: data.user?.tipo_usuario,
-      })
+      const { data } = await authService.login(usuario, password)
       setAuth(data.user, data.access, data.refresh)
-      console.log('[Login] Auth stored, navigating to /admin')
       navigate('/admin')
     } catch (err: any) {
-      console.error('[Login] Login error:', err)
-      console.error('[Login] Error response:', err.response?.data)
       setError(err.response?.data?.error || 'Credenciales inválidas')
     } finally {
       setIsSubmitting(false)
@@ -39,7 +29,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <span className="text-white font-bold text-3xl">S</span>
@@ -48,7 +37,6 @@ export default function LoginPage() {
           <p className="text-slate-400 mt-1">Panel de Administración</p>
         </div>
 
-        {/* Form */}
         <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
           {error && (
             <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>

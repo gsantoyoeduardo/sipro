@@ -24,6 +24,9 @@ frontend/dist/
 *.swo
 *~
 
+# AI / Tooling
+.opencode/
+
 # OS
 .DS_Store
 Thumbs.db

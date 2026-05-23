@@ -1,38 +1,38 @@
 import { create } from 'zustand'
-import type { Usuario } from '../types'
+
+interface User {
+  idusuario: string
+  tipo_usuario: string
+  nombres: string
+  apellidos: string
+  correo: string
+  usuario: string
+}
 
 interface AuthState {
-  user: Usuario | null
+  user: User | null
   isAuthenticated: boolean
-  setAuth: (user: Usuario, accessToken: string, refreshToken: string) => void
+  tenantId: string | null
+  setAuth: (user: User, accessToken: string, refreshToken: string, tenantId: string) => void
   logout: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: (() => {
-    try {
-      const stored = localStorage.getItem('user')
-      return stored ? JSON.parse(stored) : null
-    } catch {
-      return null
-    }
-  })(),
+  user: JSON.parse(localStorage.getItem('user') || 'null'),
   isAuthenticated: !!localStorage.getItem('access_token'),
-  setAuth: (user, accessToken, refreshToken) => {
+  tenantId: localStorage.getItem('tenant_id'),
+  setAuth: (user, accessToken, refreshToken, tenantId) => {
     localStorage.setItem('access_token', accessToken)
     localStorage.setItem('refresh_token', refreshToken)
     localStorage.setItem('user', JSON.stringify(user))
-    if (user.idempresa) {
-      localStorage.setItem('tenant_id', String(user.idempresa))
-    }
-    set({ user, isAuthenticated: true })
+    localStorage.setItem('tenant_id', tenantId)
+    set({ user, isAuthenticated: true, tenantId })
   },
   logout: () => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
     localStorage.removeItem('tenant_id')
-    set({ user: null, isAuthenticated: false })
-    window.location.href = '/login'
+    set({ user: null, isAuthenticated: false, tenantId: null })
   },
 }))

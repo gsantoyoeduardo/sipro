@@ -128,9 +128,8 @@ class Command(BaseCommand):
 
         almacenes_map = {}
         for suc, nombre, codigo, desc in [
-            (sucursales_map['SEDE001'], 'Almacén Principal', 'ALM001', 'Almacén de operaciones principales'),
-            (sucursales_map['SEDE001'], 'Almacén Frío', 'ALM002', 'Almacén refrigerado para productos perecibles'),
-            (sucursales_map['SEDE001'], 'Almacén Devoluciones', 'ALM003', 'Almacén para productos devueltos'),
+            (sucursales_map['SEDE001'], 'Almacén Principal', 'ALM001', 'Almacén principal de operaciones'),
+            (sucursales_map['SEDE001'], 'Almacén Secundario', 'ALM002', 'Almacén secundario de respaldo'),
         ]:
             a, _ = Almacen.objects.get_or_create(
                 idsucursal=suc,
@@ -138,16 +137,15 @@ class Command(BaseCommand):
                 defaults={
                     'nombre': nombre,
                     'descripcion': desc,
-                    'ancho': 500,
-                    'alto': 300,
+                    'ancho': 800,
+                    'alto': 500,
                     'capacidadmaxima': 10000,
                 },
             )
             almacenes_map[codigo] = a
             self._log('🏬', 'Almacén', f'{a.nombre} ({a.codigo})')
         self._almacen_principal = almacenes_map['ALM001']
-        self._almacen_frio = almacenes_map['ALM002']
-        self._almacen_devoluciones = almacenes_map['ALM003']
+        self._almacen_secundario = almacenes_map['ALM002']
 
     # ------------------------------------------------------------------
     # permisos
@@ -307,11 +305,12 @@ class Command(BaseCommand):
         almacen = self._almacen_principal
 
         zonas_data = [
-            ('Z-REC', 'Recepción', 'recepcion', 0, 0, 100, 100, '#4CAF50'),
-            ('Z-ALM', 'Almacenamiento', 'almacenamiento', 100, 0, 300, 200, '#2196F3'),
-            ('Z-PICK', 'Picking', 'picking', 400, 0, 100, 100, '#FF9800'),
-            ('Z-DES', 'Despacho', 'despacho', 400, 100, 100, 100, '#9C27B0'),
-            ('Z-DEV', 'Devoluciones', 'devoluciones', 0, 100, 100, 100, '#F44336'),
+            ('Z-REC', 'Recepción', 'recepcion', 0, 0, 150, 120, '#4CAF50'),
+            ('Z-TRANS', 'Zona Tránsito', 'almacenamiento', 0, 120, 150, 130, '#FFC107'),
+            ('Z-ESPERA', 'Zona Espera', 'almacenamiento', 0, 250, 150, 130, '#FF9800'),
+            ('Z-DES', 'Despacho', 'despacho', 0, 380, 150, 120, '#F44336'),
+            ('Z-ALM-A', 'Almacenamiento A (Alta Rotación)', 'almacenamiento', 200, 0, 600, 200, '#2196F3'),
+            ('Z-ALM-B', 'Almacenamiento B (Baja Rotación)', 'almacenamiento', 200, 250, 600, 200, '#9C27B0'),
         ]
         zonas = []
         for codigo, nombre, tipo, x, y, ancho, alto, color in zonas_data:
@@ -322,39 +321,50 @@ class Command(BaseCommand):
             )
             zonas.append(z)
         self._log('🗺', 'Zonas', len(zonas))
-        zona_alm = zonas[1]
 
+        zona_alm_a = zonas[4]
+        zona_alm_b = zonas[5]
+        zona_trans = zonas[1]
+
+        pasillos_data = [
+            ('P-01', 'Pasillo Vertical', zona_trans, 150, 0, 50, 500, 'vertical'),
+            ('P-02', 'Pasillo Norte', zona_alm_a, 200, 200, 600, 50, 'horizontal'),
+            ('P-03', 'Pasillo Sur', zona_alm_b, 200, 450, 600, 50, 'horizontal'),
+        ]
         pasillos = []
-        for i in range(1, 9):
-            codigo = f'P-{i:02d}'
-            x = 10 + (i - 1) % 4 * 65
-            y = 10 + ((i - 1) // 4) * 80
-            orientacion = 'vertical' if i % 2 == 0 else 'horizontal'
+        for codigo, nombre, zona, x, y, ancho, largo, orientacion in pasillos_data:
             p, _ = Pasillo.objects.get_or_create(
-                idzona=zona_alm,
+                idzona=zona,
                 codigo=codigo,
-                defaults={'nombre': f'Pasillo {i}', 'x': x, 'y': y, 'orientacion': orientacion},
+                defaults={'nombre': nombre, 'x': x, 'y': y, 'ancho': ancho, 'largo': largo, 'orientacion': orientacion},
             )
             pasillos.append(p)
         self._log('📏', 'Pasillos', len(pasillos))
 
+        pasillo_norte = pasillos[1]
+        pasillo_sur = pasillos[2]
+
+        estantes_data = [
+            ('E01', 'Estante A1', pasillo_norte, 220, 80, 'izquierda'),
+            ('E02', 'Estante A2', pasillo_norte, 340, 80, 'izquierda'),
+            ('E03', 'Estante A3', pasillo_norte, 460, 80, 'izquierda'),
+            ('E04', 'Estante A4', pasillo_norte, 580, 80, 'izquierda'),
+            ('E05', 'Estante B1', pasillo_sur, 220, 330, 'izquierda'),
+            ('E06', 'Estante B2', pasillo_sur, 340, 330, 'izquierda'),
+            ('E07', 'Estante B3', pasillo_sur, 460, 330, 'izquierda'),
+            ('E08', 'Estante B4', pasillo_sur, 580, 330, 'izquierda'),
+        ]
         estantes = []
-        for pasillo in pasillos:
-            for j in range(1, 3):
-                codigo = f'{pasillo.codigo}-E{j}'
-                lado = 'izquierda' if j == 1 else 'derecha'
-                e, _ = Estante.objects.get_or_create(
-                    idpasillo=pasillo,
-                    codigo=codigo,
-                    defaults={
-                        'nombre': f'Estante {pasillo.codigo} Lado {"Izq" if j == 1 else "Der"}',
-                        'lado': lado,
-                        'cantidadniveles': 3,
-                        'x': 0,
-                        'y': 0,
-                    },
-                )
-                estantes.append(e)
+        for codigo, nombre, pasillo, x, y, lado in estantes_data:
+            e, _ = Estante.objects.get_or_create(
+                idpasillo=pasillo,
+                codigo=codigo,
+                defaults={
+                    'nombre': nombre, 'x': x, 'y': y, 'lado': lado,
+                    'ancho': 30, 'alto': 40, 'profundidad': 50, 'cantidadniveles': 3,
+                },
+            )
+            estantes.append(e)
         self._log('📦', 'Estantes', len(estantes))
 
         niveles = []
@@ -371,7 +381,7 @@ class Command(BaseCommand):
         ubicaciones = []
         for nivel in niveles:
             for m in range(1, 3):
-                est_cod = nivel.idestante.codigo.replace('P-0', 'P')
+                est_cod = nivel.idestante.codigo
                 codigo = f'{est_cod}-N{nivel.numero}-U{m}'
                 u, _ = Ubicacion.objects.get_or_create(
                     codigo=codigo,
@@ -385,57 +395,60 @@ class Command(BaseCommand):
         self._log('📍', 'Ubicaciones', len(ubicaciones))
         self._ubicaciones = ubicaciones
 
+        # Nodos sobre el Pasillo Vertical (x=150-200)
+        # y sobre los Pasillos Norte (y=200-250) y Sur (y=450-500)
         nodos_data = [
-            ('N-Entrada', 'entrada', 0, 50),
-            ('N-Salida', 'salida', 500, 250),
-            ('N-Esq-NO', 'esquina', 100, 0),
-            ('N-Esq-NE', 'esquina', 400, 0),
-            ('N-Esq-SO', 'esquina', 0, 200),
-            ('N-Esq-SE', 'esquina', 500, 0),
-            ('N-Int-01', 'interseccion', 150, 50),
-            ('N-Int-02', 'interseccion', 250, 50),
-            ('N-Int-03', 'interseccion', 350, 50),
-            ('N-Int-04', 'interseccion', 150, 150),
-            ('N-Int-05', 'interseccion', 250, 150),
-            ('N-Int-06', 'interseccion', 350, 150),
-            ('N-Pick-01', 'punto_recogida', 130, 80),
-            ('N-Pick-02', 'punto_recogida', 200, 80),
-            ('N-Pick-03', 'punto_recogida', 270, 80),
-            ('N-Pick-04', 'punto_recogida', 130, 180),
-            ('N-Pick-05', 'punto_recogida', 200, 180),
-            ('N-Pick-06', 'punto_recogida', 270, 180),
-            ('N-Pick-07', 'punto_recogida', 350, 80),
-            ('N-Pick-08', 'punto_recogida', 350, 180),
+            ('N-Entrada', 'entrada', 75, 60),
+            ('N-Int-N', 'interseccion', 175, 25),
+            ('N-Int-C', 'interseccion', 175, 225),
+            ('N-Int-S', 'interseccion', 175, 475),
+            ('N-Pick-A1', 'punto_recogida', 235, 200),
+            ('N-Pick-A2', 'punto_recogida', 355, 200),
+            ('N-Pick-A3', 'punto_recogida', 475, 200),
+            ('N-Pick-A4', 'punto_recogida', 595, 200),
+            ('N-Pick-B1', 'punto_recogida', 235, 450),
+            ('N-Pick-B2', 'punto_recogida', 355, 450),
+            ('N-Pick-B3', 'punto_recogida', 475, 450),
+            ('N-Pick-B4', 'punto_recogida', 595, 450),
+            ('N-Salida', 'salida', 75, 440),
         ]
         nodos = []
-        for i, (nombre, tipo, cx, cy) in enumerate(nodos_data):
-            ubic = ubicaciones[i] if tipo == 'punto_recogida' and i < len(ubicaciones) else None
+        for nombre, tipo, cx, cy in nodos_data:
             n, _ = self._safe_get_or_create(
                 Nodo,
                 {'idalmacen': almacen, 'nombre': nombre},
-                {'tipo': tipo, 'coordenada_x': cx, 'coordenada_y': cy, 'idubicacion': ubic},
+                {'tipo': tipo, 'coordenada_x': cx, 'coordenada_y': cy, 'idubicacion': None},
             )
             nodos.append(n)
         self._log('🔵', 'Nodos', len(nodos))
 
         conexiones = []
         for origen_idx, destino_idx, distancia, tipo in [
-            (0, 1, 520, 'pasillo'),       (0, 2, 60, 'acceso'),
-            (0, 4, 160, 'acceso'),        (2, 6, 70, 'pasillo'),
-            (2, 3, 310, 'pasillo'),       (3, 8, 70, 'pasillo'),
-            (6, 7, 100, 'pasillo'),       (7, 8, 100, 'pasillo'),
-            (6, 9, 100, 'pasillo'),       (7, 10, 100, 'pasillo'),
-            (8, 11, 100, 'pasillo'),      (9, 10, 100, 'pasillo'),
-            (10, 11, 100, 'pasillo'),     (4, 9, 60, 'acceso'),
-            (4, 5, 510, 'pasillo'),       (5, 1, 200, 'pasillo'),
-            (12, 6, 35, 'cruce'),         (12, 9, 105, 'cruce'),
-            (13, 7, 35, 'cruce'),         (13, 10, 105, 'cruce'),
-            (14, 8, 35, 'cruce'),         (14, 11, 105, 'cruce'),
-            (15, 9, 35, 'cruce'),         (15, 4, 155, 'cruce'),
-            (16, 10, 35, 'cruce'),        (16, 9, 105, 'cruce'),
-            (17, 11, 35, 'cruce'),        (17, 10, 105, 'cruce'),
-            (18, 8, 35, 'cruce'),         (18, 11, 105, 'cruce'),
-            (19, 11, 35, 'cruce'),
+            # Eje vertical (Pasillo Vertical)
+            (0, 1, 110, 'acceso'),        # N-Entrada → N-Int-N
+            (1, 2, 200, 'pasillo'),       # N-Int-N → N-Int-C
+            (2, 3, 250, 'pasillo'),       # N-Int-C → N-Int-S
+
+            # Eje horizontal norte (Pasillo Norte)
+            (4, 5, 120, 'pasillo'),       # N-Pick-A1 → N-Pick-A2
+            (5, 6, 120, 'pasillo'),       # N-Pick-A2 → N-Pick-A3
+            (6, 7, 120, 'pasillo'),       # N-Pick-A3 → N-Pick-A4
+
+            # Eje horizontal sur (Pasillo Sur)
+            (8, 9, 120, 'pasillo'),       # N-Pick-B1 → N-Pick-B2
+            (9, 10, 120, 'pasillo'),      # N-Pick-B2 → N-Pick-B3
+            (10, 11, 120, 'pasillo'),     # N-Pick-B3 → N-Pick-B4
+
+            # Conexiones vertical ↔ norte
+            (2, 4, 80, 'cruce'),          # N-Int-C → N-Pick-A1
+            (1, 7, 540, 'cruce'),         # N-Int-N → N-Pick-A4
+
+            # Conexiones vertical ↔ sur
+            (3, 8, 65, 'cruce'),          # N-Int-S → N-Pick-B1
+            (2, 11, 500, 'cruce'),        # N-Int-C → N-Pick-B4
+
+            # Salida
+            (3, 12, 110, 'acceso'),       # N-Int-S → N-Salida
         ]:
             c, _ = Conexion.objects.get_or_create(
                 idnodoorigen=nodos[origen_idx],
@@ -729,7 +742,7 @@ class Command(BaseCommand):
     def _seed_transferencias(self):
         self._section('🚛 Transferencias:')
         origen = self._almacen_principal
-        destino = self._almacen_frio
+        destino = self._almacen_secundario
         prods = self._productos
 
         t1, _ = Transferencia.objects.get_or_create(
