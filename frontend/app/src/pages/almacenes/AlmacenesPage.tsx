@@ -121,16 +121,16 @@ export default function AlmacenesPage() {
   )
 
   // Genera clases CSS condicionales para inputs con error
-  const ic = (key: string) => w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none 
+  const ic = (key: string) => `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none ${fieldErrors[key] ? 'border-red-500' : 'border-gray-300'}`
 
   // Columnas de la tabla de almacenes
   const columns = [
     { key: 'nombre', header: 'Nombre' },
     { key: 'codigo', header: 'C\u00f3digo' },
     { key: 'idsucursal', header: 'Sucursal', render: (item: Almacen) => getSucName(item.idsucursal) },
-    { key: 'capacidadmaxima', header: 'Capacidad M\u00e1x.', render: (item: Almacen) => item.capacidadmaxima ? ${item.capacidadmaxima} m\u00b3 : '\u2014' },
+    { key: 'capacidadmaxima', header: 'Capacidad M\u00e1x.', render: (item: Almacen) => item.capacidadmaxima ? `${item.capacidadmaxima} m³` : '—' },
     { key: 'estado', header: 'Estado', render: (item: Almacen) => (
-      <span className={px-2 py-1 text-xs rounded-full }>{item.estado ? 'Activo' : 'Inactivo'}</span>
+      <span className={`px-2 py-1 text-xs rounded-full ${item.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{item.estado ? 'Activo' : 'Inactivo'}</span>
     )},
   ]
 
@@ -222,8 +222,8 @@ export default function AlmacenesPage() {
       </Modal>
 
       {/* Di\u00e1logos de confirmaci\u00f3n para eliminar y activar/desactivar almac\u00e9n */}
-      <ConfirmDialog isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={() => handleDeleteConfirm()} title="Eliminar Almac\u00e9n" message={\u00bfEst\u00e1 seguro de eliminar ""?} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deleting} />
-      <ConfirmDialog isOpen={!!confirmToggle} onClose={() => setConfirmToggle(null)} onConfirm={() => handleToggleConfirm()} title={confirmToggle?.estado ? 'Desactivar Almac\u00e9n' : 'Activar Almac\u00e9n'} message={\u00bfEst\u00e1 seguro de  ""?} confirmLabel={confirmToggle?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={toggling} />
+      <ConfirmDialog isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={() => handleDeleteConfirm()} title="Eliminar Almacén" message={`¿Está seguro de eliminar "${confirmDelete?.nombre}"?`} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deleting} />
+      <ConfirmDialog isOpen={!!confirmToggle} onClose={() => setConfirmToggle(null)} onConfirm={() => handleToggleConfirm()} title={confirmToggle?.estado ? 'Desactivar Almacén' : 'Activar Almacén'} message={`¿Está seguro de ${confirmToggle?.estado ? 'desactivar' : 'activar'} "${confirmToggle?.nombre}"?`} confirmLabel={confirmToggle?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={toggling} />
     </div>
   )
 }

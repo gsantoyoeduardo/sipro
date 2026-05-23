@@ -135,7 +135,7 @@ export default function EmpresasPage() {
       key: 'estado',
       header: 'Estado',
       render: (item: Empresa) => (
-        <span className={px-2 py-1 text-xs rounded-full }>
+        <span className={`px-2 py-1 text-xs rounded-full ${item.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
           {item.estado ? 'Activo' : 'Inactivo'}
         </span>
       ),
@@ -155,7 +155,7 @@ export default function EmpresasPage() {
 
   // Genera clases CSS condicionales para inputs con error
   const inputClass = (key: string) =>
-    w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none 
+    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none ${fieldErrors[key] ? 'border-red-500' : 'border-gray-300'}`
 
   return (
     <div>
@@ -231,7 +231,7 @@ export default function EmpresasPage() {
         onClose={() => setConfirmDelete(null)}
         onConfirm={() => handleDeleteConfirm()}
         title="Eliminar Empresa"
-        message={\u00bfEst\u00e1 seguro de eliminar ""? Esta acci\u00f3n no se puede deshacer.}
+        message={`¿Está seguro de eliminar "${confirmDelete?.razonsocial}"? Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar"
         confirmVariant="danger"
         isLoading={deleting}
@@ -243,7 +243,7 @@ export default function EmpresasPage() {
         onClose={() => setConfirmToggle(null)}
         onConfirm={() => handleToggleConfirm()}
         title={confirmToggle?.estado ? 'Desactivar Empresa' : 'Activar Empresa'}
-        message={\u00bfEst\u00e1 seguro de  ""?}
+        message={`¿Está seguro de ${confirmToggle?.estado ? 'desactivar' : 'activar'} "${confirmToggle?.razonsocial}"?`}
         confirmLabel={confirmToggle?.estado ? 'Desactivar' : 'Activar'}
         confirmVariant="primary"
         isLoading={toggling}

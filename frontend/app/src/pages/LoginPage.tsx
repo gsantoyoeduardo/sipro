@@ -24,7 +24,7 @@ export default function LoginPage() {
   // Funci\u00f3n que realiza la petici\u00f3n de login a la API
   const handleLogin = async () => {
     const res = await api.post('/tenant/auth/', { ruc, usuario, password })
-    setAuth(res.data.user, res.data.access, res.data.refresh)
+    setAuth(res.data.user, res.data.access, res.data.refresh, res.data.tenant_id || '')
     return true
   }
 
@@ -71,7 +71,7 @@ export default function LoginPage() {
             type="text"
             value={ruc}
             onChange={(e) => { setRuc(e.target.value); setFieldErrors((p) => ({ ...p, ruc: '' })) }}
-            className={w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 }
+            className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.ruc ? 'border-red-500' : 'border-gray-300'}`}
             required
           />
           {fieldErrors.ruc && <p className="text-red-500 text-xs mt-1">{fieldErrors.ruc}</p>}
@@ -83,7 +83,7 @@ export default function LoginPage() {
             type="text"
             value={usuario}
             onChange={(e) => { setUsuario(e.target.value); setFieldErrors((p) => ({ ...p, usuario: '' })) }}
-            className={w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 }
+            className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.ruc ? 'border-red-500' : 'border-gray-300'}`}
             required
           />
           {fieldErrors.usuario && <p className="text-red-500 text-xs mt-1">{fieldErrors.usuario}</p>}
@@ -95,7 +95,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: '' })) }}
-            className={w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 }
+            className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.ruc ? 'border-red-500' : 'border-gray-300'}`}
             required
           />
           {fieldErrors.password && <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>}

@@ -119,7 +119,7 @@ export default function SucursalesPage() {
     { key: 'codigo', header: 'C\u00f3digo' },
     { key: 'direccion', header: 'Direcci\u00f3n' },
     { key: 'estado', header: 'Estado', render: (item: Sucursal) => (
-      <span className={px-2 py-1 text-xs rounded-full }>
+      <span className={`px-2 py-1 text-xs rounded-full ${item.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
         {item.estado ? 'Activo' : 'Inactivo'}
       </span>
     )},
@@ -138,7 +138,7 @@ export default function SucursalesPage() {
 
   // Genera clases CSS condicionales para inputs con error
   const ic = (key: string) =>
-    w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none 
+    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none ${fieldErrors[key] ? 'border-red-500' : 'border-gray-300'}`
 
   return (
     <div>
@@ -190,8 +190,8 @@ export default function SucursalesPage() {
       </Modal>
 
       {/* Di\u00e1logos de confirmaci\u00f3n para eliminar y activar/desactivar sucursal */}
-      <ConfirmDialog isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={() => handleDeleteConfirm()} title="Eliminar Sucursal" message={\u00bfEst\u00e1 seguro de eliminar ""?} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deleting} />
-      <ConfirmDialog isOpen={!!confirmToggle} onClose={() => setConfirmToggle(null)} onConfirm={() => handleToggleConfirm()} title={confirmToggle?.estado ? 'Desactivar Sucursal' : 'Activar Sucursal'} message={\u00bfEst\u00e1 seguro de  ""?} confirmLabel={confirmToggle?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={toggling} />
+      <ConfirmDialog isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={() => handleDeleteConfirm()} title="Eliminar Sucursal" message={`¿Está seguro de eliminar "${confirmDelete?.nombre}"?`} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deleting} />
+      <ConfirmDialog isOpen={!!confirmToggle} onClose={() => setConfirmToggle(null)} onConfirm={() => handleToggleConfirm()} title={confirmToggle?.estado ? 'Desactivar Sucursal' : 'Activar Sucursal'} message={`¿Está seguro de ${confirmToggle?.estado ? 'desactivar' : 'activar'} "${confirmToggle?.nombre}"?`} confirmLabel={confirmToggle?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={toggling} />
     </div>
   )
 }

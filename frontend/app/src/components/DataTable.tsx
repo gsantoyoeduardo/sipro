@@ -69,7 +69,7 @@ export default function DataTable<T>({
           {data.map((item, idx) => (
             <tr
               key={idx}
-              className={hover:bg-gray-50 }
+              className={`hover:bg-gray-50 ${onRowClick ? 'cursor-pointer' : ''}`}
               onClick={() => onRowClick?.(item)}
             >
               {columns.map((col) => (

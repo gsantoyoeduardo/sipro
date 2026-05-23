@@ -110,10 +110,10 @@ export default function LayoutMapPage() {
   const selId = selectedEntity?.id ?? null
 
   // Entidad seleccionada actualmente según tipo e ID
-  const selectedZona = selType === 'zona' ? zonas.find((z) => z.idzona === selId) : null
-  const selectedPasillo = selType === 'pasillo' ? pasillos.find((p) => p.idpasillo === selId) : null
-  const selectedEstante = selType === 'estante' ? estantes.find((e) => e.idestante === selId) : null
-  const selectedNodo = selType === 'nodo' ? nodos.find((n) => n.idnodo === selId) : null
+  const selectedZona = selType === 'zona' ? (zonas.find((z) => z.idzona === selId) ?? null) : null
+  const selectedPasillo = selType === 'pasillo' ? (pasillos.find((p) => p.idpasillo === selId) ?? null) : null
+  const selectedEstante = selType === 'estante' ? (estantes.find((e) => e.idestante === selId) ?? null) : null
+  const selectedNodo = selType === 'nodo' ? (nodos.find((n) => n.idnodo === selId) ?? null) : null
 
   // Offset del área del almacén dentro del canvas y dimensiones escaladas
   const canvasOffset = { x: 50, y: 50 }

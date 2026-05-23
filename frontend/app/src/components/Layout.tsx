@@ -55,7 +55,7 @@ export default function Layout() {
   const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
-  const userName = user ? ${user.nombres}  : 'Usuario'
+  const userName = user ? `${user.nombres} ${user.apellidos}` : 'Usuario'
   const initials = getInitials(user?.nombres || 'U')
   // Determina si el usuario es admin_sistema (ve la secci\u00f3n Empresas)
   const esAdminSistema = user?.tipo_usuario === 'admin_sistema'
@@ -84,8 +84,7 @@ export default function Layout() {
 
       {/* Sidebar de navegaci\u00f3n */}
       <aside
-        className={ixed lg:static inset-y-0 left-0 z-30 bg-slate-900 text-white flex flex-col w-72 transition-transform duration-300
-          }
+        className={`fixed lg:static inset-y-0 left-0 z-30 bg-slate-900 text-white flex flex-col w-72 transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Logo */}
         <div className="flex items-center justify-center h-20 px-6 border-b border-slate-700/50">
@@ -110,10 +109,9 @@ export default function Layout() {
                         navigate(item.path)
                         setMobileOpen(false)
                       }}
-                      className={w-full flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-all duration-200 group
-                        }
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-all duration-200 group ${isActive ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                     >
-                      <span className={w-5 h-5 flex-shrink-0 }>
+                      <span className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'}`}>
                         <item.icon />
                       </span>
                       <span className="font-medium truncate">{item.label}</span>

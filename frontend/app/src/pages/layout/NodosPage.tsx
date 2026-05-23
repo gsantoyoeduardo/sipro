@@ -139,7 +139,7 @@ export default function NodosPage() {
   )
 
   // Genera clases CSS para inputs con error (sin bordes redondeados para compatibilidad)
-  const ic = (key: string) => w-full px-3 py-2 border rounded-lg 
+  const ic = (key: string) => `w-full px-3 py-2 border rounded-lg ${fieldErrors[key] ? 'border-red-500' : 'border-gray-300'}`
 
   // Columnas de la tabla de nodos
   const nodoColumns = [
@@ -151,7 +151,7 @@ export default function NodosPage() {
     {
       key: 'estado', header: 'Estado',
       render: (item: Nodo) => (
-        <span className={px-2 py-1 text-xs rounded-full }>
+        <span className={`px-2 py-1 text-xs rounded-full ${item.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
           {item.estado ? 'Activo' : 'Inactivo'}
         </span>
       ),
@@ -180,7 +180,7 @@ export default function NodosPage() {
     {
       key: 'estado', header: 'Estado',
       render: (item: Conexion) => (
-        <span className={px-2 py-1 text-xs rounded-full }>
+        <span className={`px-2 py-1 text-xs rounded-full ${item.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
           {item.estado ? 'Activo' : 'Inactivo'}
         </span>
       ),
@@ -328,10 +328,10 @@ export default function NodosPage() {
       </Modal>
 
       {/* Di\u00e1logos de confirmaci\u00f3n para nodos y conexiones */}
-      <ConfirmDialog isOpen={!!confirmDeleteNodo} onClose={() => setConfirmDeleteNodo(null)} onConfirm={() => handleDeleteNodoConfirm()} title="Eliminar Nodo" message={¿Está seguro de eliminar ""?} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deletingNodo} />
-      <ConfirmDialog isOpen={!!confirmToggleNodo} onClose={() => setConfirmToggleNodo(null)} onConfirm={() => handleToggleNodoConfirm()} title={confirmToggleNodo?.estado ? 'Desactivar Nodo' : 'Activar Nodo'} message={¿Está seguro de  ""?} confirmLabel={confirmToggleNodo?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={togglingNodo} />
+      <ConfirmDialog isOpen={!!confirmDeleteNodo} onClose={() => setConfirmDeleteNodo(null)} onConfirm={() => handleDeleteNodoConfirm()} title="Eliminar Nodo" message={`¿Está seguro de eliminar "${confirmDeleteNodo?.nombre}"?`} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deletingNodo} />
+      <ConfirmDialog isOpen={!!confirmToggleNodo} onClose={() => setConfirmToggleNodo(null)} onConfirm={() => handleToggleNodoConfirm()} title={confirmToggleNodo?.estado ? 'Desactivar Nodo' : 'Activar Nodo'} message={`¿Está seguro de ${confirmToggleNodo?.estado ? 'desactivar' : 'activar'} "${confirmToggleNodo?.nombre}"?`} confirmLabel={confirmToggleNodo?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={togglingNodo} />
       <ConfirmDialog isOpen={!!confirmDeleteConex} onClose={() => setConfirmDeleteConex(null)} onConfirm={() => handleDeleteConexConfirm()} title="Eliminar Conexión" message="¿Está seguro de eliminar la conexión?" confirmLabel="Eliminar" confirmVariant="danger" isLoading={deletingConex} />
-      <ConfirmDialog isOpen={!!confirmToggleConex} onClose={() => setConfirmToggleConex(null)} onConfirm={() => handleToggleConexConfirm()} title={confirmToggleConex?.estado ? 'Desactivar Conexión' : 'Activar Conexión'} message={¿Está seguro de  la conexión?} confirmLabel={confirmToggleConex?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={togglingConex} />
+      <ConfirmDialog isOpen={!!confirmToggleConex} onClose={() => setConfirmToggleConex(null)} onConfirm={() => handleToggleConexConfirm()} title={confirmToggleConex?.estado ? 'Desactivar Conexión' : 'Activar Conexión'} message={`¿Está seguro de ${confirmToggleConex?.estado ? 'desactivar' : 'activar'} la conexión?`} confirmLabel={confirmToggleConex?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={togglingConex} />
     </div>
   )
 }

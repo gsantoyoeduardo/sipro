@@ -27,7 +27,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
       {/* Overlay semitransparente que cierra el modal al hacer clic fuera */}
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       {/* Contenedor del modal */}
-      <div className={elative bg-white rounded-lg shadow-xl w-full mx-4  max-h-[90vh] flex flex-col}>
+      <div className={`relative bg-white rounded-lg shadow-xl w-full mx-4 ${sizeClasses[size]} max-h-[90vh] flex flex-col`}>
         {/* Cabecera con t\u00edtulo y bot\u00f3n de cierre */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
