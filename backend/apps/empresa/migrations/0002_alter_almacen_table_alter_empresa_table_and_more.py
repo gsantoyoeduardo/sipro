@@ -10,16 +10,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelTable(
-            name='almacen',
-            table='almacen',
-        ),
-        migrations.AlterModelTable(
-            name='empresa',
-            table='empresa',
-        ),
-        migrations.AlterModelTable(
-            name='sucursal',
-            table='sucursal',
-        ),
+        migrations.RunSQL("SELECT 1", "SELECT 1"),
     ]

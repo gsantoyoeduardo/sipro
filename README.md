@@ -20,29 +20,78 @@ Plataforma web para la gestión integral de almacenes con funcionalidades de lay
 
 ## Arquitectura del Sistema
 
+### Arquitectura Multi-Tenant
+
+SIPRO utiliza una arquitectura **schema-based multi-tenant** con separación de autenticación:
+
 ```
-┌─────────────┐     ┌──────────┐     ┌──────────────┐
-│  React 18   │────▶│  Nginx   │────▶│  Django 5.2  │
-│  TypeScript │     │  Proxy   │     │  DRF 3.16    │
-│  Tailwind   │     │  :80     │     │  :8000       │
-└─────────────┘     └──────────┘     └──────┬───────┘
-                                            │
-                              ┌─────────────┼─────────────┐
-                              ▼             ▼             ▼
-                        ┌──────────┐ ┌──────────┐ ┌──────────┐
-                        │PostgreSQL│ │  Redis   │ │  Media/  │
-                        │  18      │ │   7      │ │  Static  │
-                        │  :5432   │ │  :6379   │ │          │
-                        └──────────┘ └──────────┘ └──────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                        Nginx Proxy                           │
+│                         :80                                  │
+└────────────┬──────────────────────────┬──────────────────────┘
+             │                          │
+    ┌────────▼────────┐      ┌──────────▼─────────┐
+    │  Portal Admin   │      │     App WMS        │
+    │  (Dueños SIPRO) │      │  (Clientes)        │
+    │  :8081          │      │  :8080             │
+    └────────┬────────┘      └──────────┬─────────┘
+             │                          │
+             │   /portal/auth/          │   /tenant/auth/
+             └──────────┬───────────────┘
+                        │
+              ┌─────────▼──────────┐
+              │   Backend API      │
+              │   Django + DRF     │
+              │   :8000            │
+              └─────────┬──────────┘
+                        │
+    ┌───────────────────┼───────────────────┐
+    ▼                   ▼                   ▼
+┌──────────┐    ┌──────────────┐    ┌──────────┐
+│PostgreSQL│    │    Redis     │    │  Media   │
+│  :5432   │    │    :6379     │    │  Static  │
+└──────────┘    └──────────────┘    └──────────┘
+
+Esquemas PostgreSQL:
+- public: Tablas globales (Empresa, Usuario global, Rol, Permiso)
+- empresa_{id}: Tablas por cliente (Almacen, Inventario, etc.)
+- auditoria: Logs de auditoría cross-tenant
 ```
 
-**Patrón de arquitectura:** Modelo-Vista-Controlador (MVC) implementado con Django MVT (Model-View-Template) en el backend y React SPA en el frontend, con separación estricta de capas.
+### Separación de Autenticación
+
+| Endpoint | Acceso | Tipo de Usuario | Frontend |
+|----------|--------|-----------------|----------|
+| `/portal/auth/` | Dueños de SIPRO | `admin_sistema` | Portal (:8081) |
+| `/tenant/auth/` | Clientes/Empresas | `admin_empresa`, `operador` | App WMS (:8080) |
+
+### Tipos de Usuario
+
+| Tipo | Descripción | Acceso |
+|------|-------------|--------|
+| `admin_sistema` | Dueños de SIPRO | Portal Admin (gestiona empresas) |
+| `admin_empresa` | Admin de empresa cliente | App WMS (gestiona su empresa) |
+| `operador` | Usuario operativo | App WMS (operaciones de almacén) |
+
+### Flujo de Registro de Empresas
+
+1. Dueño se loguea en **Portal Admin** (`/auth/portal/login/`)
+2. Crea nueva **Empresa** desde el dashboard
+3. Sistema genera automáticamente:
+   - Schema PostgreSQL: `empresa_{id}`
+   - Migraciones en el schema
+   - Roles y permisos por defecto
+   - Superusuario admin para la empresa
+4. Admin de empresa recibe credenciales
+5. Admin se loguea en **App WMS** (`/tenant/auth/`)
+6. Admin gestiona sus usuarios, almacenes, inventario, etc.
 
 **Contenedores Docker:**
 - `postgres:18-alpine` — Base de datos relacional (puerto 5432)
 - `redis:7-alpine` — Caché y rate limiting (puerto 6379)
 - `backend` — Django REST Framework (puerto 8000)
-- `frontend` — React + Nginx (puerto 8080)
+- `portal` — React Portal Admin + Nginx (puerto 8081)
+- `app` — React App WMS + Nginx (puerto 8080)
 
 ---
 
@@ -60,10 +109,15 @@ Plataforma web para la gestión integral de almacenes con funcionalidades de lay
 #### 2. Seguridad (`apps/seguridad`)
 | Entidad | Descripción | Campos principales |
 |---------|-------------|-------------------|
-| `Usuario` | Usuario del sistema | usuario, nombres, apellidos, correo, password |
+| `Usuario` | Usuario del sistema | usuario, nombres, apellidos, correo, password, **tipo_usuario**, idempresa |
 | `Rol` | Rol con permisos | nombre, descripcion |
 | `Permiso` | Permiso individual | nombre, codigo, descripcion |
 | `SesionUsuario` | Registro de sesiones | tokenjwt, refreshtoken, ip, navegador, FK→Usuario |
+
+**Tipos de Usuario:**
+- `admin_sistema`: Dueños de SIPRO (acceso al Portal Admin)
+- `admin_empresa`: Administrador de empresa cliente (acceso al App WMS)
+- `operador`: Usuario operativo de almacén (acceso al App WMS)
 
 **Relaciones:** Usuario ↔ Rol (M2M), Rol ↔ Permiso (M2M)
 
@@ -226,11 +280,17 @@ docker exec sipro-backend python manage.py seed_demo --reset
 - **Admin Django:** http://localhost:8000/admin/
 
 ### Credenciales de acceso
-| Usuario | Contraseña | Rol |
-|---------|-----------|-----|
-| `admin` | `gsantoyoeduardo` | Administrador (superuser) |
-| `supervisor1` | `demo1234` | Supervisor |
-| `operario1` | `demo1234` | Operario |
+
+**Portal Admin (Dueños SIPRO):**
+| Usuario | Contraseña | Tipo | Acceso |
+|---------|-----------|------|--------|
+| `admin` | `gsantoyoeduardo` | `admin_sistema` | Portal Admin (:8081) |
+
+**App WMS (Clientes):**
+| Usuario | Contraseña | Tipo | Acceso |
+|---------|-----------|------|--------|
+| `supervisor1` | `demo1234` | `admin_empresa` | App WMS (:8080) |
+| `operario1` | `demo1234` | `operador` | App WMS (:8080) |
 
 ### Comandos útiles
 
@@ -255,10 +315,11 @@ docker compose build --no-cache frontend && docker compose up -d --force-recreat
 ### Autenticación
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/api/auth/login/` | Iniciar sesión (JWT) |
-| POST | `/api/auth/refresh/` | Refrescar token |
-| POST | `/api/auth/logout/` | Cerrar sesión |
-| POST | `/api/auth/change-password/` | Cambiar contraseña |
+| POST | `/portal/auth/` | Login Portal Admin (dueños SIPRO) |
+| POST | `/tenant/auth/` | Login App WMS (clientes) |
+| POST | `/tenant/auth/logout/` | Logout App WMS |
+| POST | `/portal/auth/logout/` | Logout Portal Admin |
+| POST | `/auth/refresh/` | Refrescar token |
 
 ### Empresa
 | Método | Ruta | Descripción |

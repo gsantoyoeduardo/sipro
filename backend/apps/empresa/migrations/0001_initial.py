@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Empresa',
                 'verbose_name_plural': 'Empresas',
-                'db_table': 'public"."empresa',
+                'db_table': 'empresa',
             },
         ),
         migrations.CreateModel(
@@ -49,7 +49,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Sucursal',
                 'verbose_name_plural': 'Sucursales',
-                'db_table': 'public"."sucursal',
+                'db_table': 'sucursal',
                 'unique_together': {('idempresa', 'codigo')},
             },
         ),
@@ -71,7 +71,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Almacén',
                 'verbose_name_plural': 'Almacenes',
-                'db_table': 'public"."almacen',
+                'db_table': 'almacen',
                 'unique_together': {('idsucursal', 'codigo')},
             },
         ),

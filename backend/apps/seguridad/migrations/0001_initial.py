@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Permiso',
                 'verbose_name_plural': 'Permisos',
-                'db_table': 'public"."permiso',
+                'db_table': 'permiso',
             },
         ),
         migrations.CreateModel(
@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Rol',
                 'verbose_name_plural': 'Roles',
-                'db_table': 'public"."rol',
+                'db_table': 'rol',
             },
         ),
         migrations.CreateModel(
@@ -73,7 +73,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Usuario',
                 'verbose_name_plural': 'Usuarios',
-                'db_table': 'public"."usuario',
+                'db_table': 'usuario',
             },
         ),
         migrations.CreateModel(
@@ -95,7 +95,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Sesión de Usuario',
                 'verbose_name_plural': 'Sesiones de Usuarios',
-                'db_table': 'public"."sesionusuario',
+                'db_table': 'sesionusuario',
             },
         ),
         migrations.CreateModel(
@@ -110,7 +110,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Rol - Permiso',
                 'verbose_name_plural': 'Roles - Permisos',
-                'db_table': 'public"."rolpermiso',
+                'db_table': 'rolpermiso',
                 'unique_together': {('idrol', 'idpermiso')},
             },
         ),
@@ -126,7 +126,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Usuario - Rol',
                 'verbose_name_plural': 'Usuarios - Roles',
-                'db_table': 'public"."usuariorol',
+                'db_table': 'usuariorol',
                 'unique_together': {('idusuario', 'idrol')},
             },
         ),

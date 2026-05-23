@@ -1,0 +1,15 @@
+{
+  "name": "@sipro/shared",
+  "version": "1.0.0",
+  "description": "Shared types, utilities and API client for SIPRO",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./utils": "./src/utils/validators.ts",
+    "./api": "./src/api/axios.ts",
+    "./api/auth": "./src/api/auth.ts",
+    "./api/empresa": "./src/api/empresa.ts"
+  }
+}

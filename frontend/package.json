@@ -1,24 +1,18 @@
 {
-  "name": "frontend",
+  "name": "sipro-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
+  "workspaces": [
+    "app",
+    "portal",
+    "shared"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.3.0",
-    "axios": "^1.16.0",
-    "konva": "^10.3.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "react-konva": "^19.2.4",
-    "react-router-dom": "^7.15.0",
-    "tailwindcss": "^4.3.0",
-    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

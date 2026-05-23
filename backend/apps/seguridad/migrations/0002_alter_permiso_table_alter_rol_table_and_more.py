@@ -10,28 +10,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelTable(
-            name='permiso',
-            table='permiso',
-        ),
-        migrations.AlterModelTable(
-            name='rol',
-            table='rol',
-        ),
-        migrations.AlterModelTable(
-            name='rolpermiso',
-            table='rolpermiso',
-        ),
-        migrations.AlterModelTable(
-            name='sesionusuario',
-            table='sesionusuario',
-        ),
-        migrations.AlterModelTable(
-            name='usuario',
-            table='usuario',
-        ),
-        migrations.AlterModelTable(
-            name='usuariorol',
-            table='usuariorol',
-        ),
+        migrations.RunSQL("SELECT 1", "SELECT 1"),
     ]

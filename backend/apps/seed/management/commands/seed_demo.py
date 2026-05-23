@@ -1,16 +1,16 @@
-from datetime import date, timedelta
+﻿from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.base import audit_signals
-from apps.empresa.models import Almacen, Empresa, Sucursal
-from apps.inventario.models import Categoria, Inventario, Kardex, Lote, Producto
-from apps.layout.models import Conexion, Estante, Nivel, Nodo, Pasillo, Ubicacion, Zona
-from apps.picking.models import DetallePicking, Incidencia, OrdenPicking
-from apps.seguridad.models import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
-from apps.transferencia.models import DetalleTransferencia, Transferencia
+from src.infrastructure.models.empresa_model import Almacen, Empresa, Sucursal
+from src.infrastructure.models.inventario_model import Categoria, Inventario, Kardex, Lote, Producto
+from src.infrastructure.models.layout_model import Conexion, Estante, Nivel, Nodo, Pasillo, Ubicacion, Zona
+from src.infrastructure.models.picking_model import DetallePicking, Incidencia, OrdenPicking
+from src.infrastructure.models.seguridad_model import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
+from src.infrastructure.models.transferencia_model import DetalleTransferencia, Transferencia
 
 
 class Command(BaseCommand):
@@ -18,11 +18,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--reset', action='store_true', help='Eliminar todo y recrear')
+        parser.add_argument('--crear-todo', action='store_true', help='Alias de --reset')
 
     def handle(self, *args, **options):
         audit_signals.AUDIT_ENABLED = False
         try:
-            if options['reset']:
+            if options['reset'] or options.get('crear_todo'):
                 self._reset_all()
             self._print_header()
             self._seed_empresa()
@@ -82,7 +83,7 @@ class Command(BaseCommand):
             UsuarioRol, RolPermiso,
             Almacen, Sucursal, Usuario, Rol, Permiso, Empresa,
         ]
-        from apps.seguridad.models import SesionUsuario
+        from src.infrastructure.models.seguridad_model import SesionUsuario
         SesionUsuario.objects.all().delete()
 
         for model in models:
@@ -198,9 +199,11 @@ class Command(BaseCommand):
     def _seed_roles(self):
         self._section('👥 Roles y asignación de permisos:')
 
+        empresa = self._empresa
+
         rol_admin, _ = self._safe_get_or_create(
             Rol,
-            {'nombre': 'Administrador'},
+            {'idempresa': empresa, 'nombre': 'Administrador'},
             {'descripcion': 'Acceso total al sistema'},
         )
         for permiso in self._permisos.values():
@@ -217,7 +220,7 @@ class Command(BaseCommand):
         ]
         rol_supervisor, _ = self._safe_get_or_create(
             Rol,
-            {'nombre': 'Supervisor'},
+            {'idempresa': empresa, 'nombre': 'Supervisor'},
             {'descripcion': 'Supervisa operaciones de almacén'},
         )
         for key in supervisor_codes:
@@ -231,7 +234,7 @@ class Command(BaseCommand):
         ]
         rol_operario, _ = self._safe_get_or_create(
             Rol,
-            {'nombre': 'Operario'},
+            {'idempresa': empresa, 'nombre': 'Operario'},
             {'descripcion': 'Operario de almacén'},
         )
         for key in operario_codes:
@@ -246,51 +249,51 @@ class Command(BaseCommand):
     def _seed_usuarios(self):
         self._section('👤 Usuarios:')
 
-        admin, created = Usuario.objects.get_or_create(
+        admin, created = Usuario.objects.update_or_create(
             usuario='admin',
             defaults={
                 'correo': 'admin@sipro.com',
                 'nombres': 'Admin',
                 'apellidos': 'Sistema',
+                'tipo_usuario': 'admin_sistema',
                 'is_staff': True,
                 'is_superuser': True,
             },
         )
-        if created:
-            admin.set_password('gsantoyoeduardo')
-            admin.save(update_fields=['password'])
+        admin.set_password('admin1234')
+        admin.save(update_fields=['password'])
         UsuarioRol.objects.get_or_create(idusuario=admin, idrol=self._rol_admin)
         self._log('👑', 'Usuario', f'{admin.usuario} (Admin)')
         self._admin = admin
 
-        supervisor, created = Usuario.objects.get_or_create(
+        supervisor, created = Usuario.objects.update_or_create(
             usuario='supervisor1',
             defaults={
                 'correo': 'supervisor1@sipro.com',
                 'nombres': 'Carlos',
                 'apellidos': 'Mendoza',
                 'idempresa': self._empresa,
+                'tipo_usuario': 'admin_empresa',
             },
         )
-        if created:
-            supervisor.set_password('demo1234')
-            supervisor.save(update_fields=['password'])
+        supervisor.set_password('demo1234')
+        supervisor.save(update_fields=['password'])
         UsuarioRol.objects.get_or_create(idusuario=supervisor, idrol=self._rol_supervisor)
         self._log('👤', 'Usuario', f'{supervisor.usuario} (Supervisor)')
         self._supervisor = supervisor
 
-        operario, created = Usuario.objects.get_or_create(
+        operario, created = Usuario.objects.update_or_create(
             usuario='operario1',
             defaults={
                 'correo': 'operario1@sipro.com',
                 'nombres': 'Luis',
                 'apellidos': 'García',
                 'idempresa': self._empresa,
+                'tipo_usuario': 'operador',
             },
         )
-        if created:
-            operario.set_password('demo1234')
-            operario.save(update_fields=['password'])
+        operario.set_password('demo1234')
+        operario.save(update_fields=['password'])
         UsuarioRol.objects.get_or_create(idusuario=operario, idrol=self._rol_operario)
         self._log('👤', 'Usuario', f'{operario.usuario} (Operario)')
         self._operario = operario
@@ -813,7 +816,7 @@ class Command(BaseCommand):
         self.stdout.write('  ─────────────────────────────────')
         self.stdout.write('  Usuario        Contraseña       Rol')
         self.stdout.write('  ─────────────────────────────────')
-        self.stdout.write('  admin          gsantoyoeduardo  Administrador')
+        self.stdout.write('  admin          admin1234         Administrador')
         self.stdout.write('  supervisor1    demo1234         Supervisor')
         self.stdout.write('  operario1      demo1234         Operario')
         self.stdout.write('  ─────────────────────────────────')
@@ -821,3 +824,5 @@ class Command(BaseCommand):
         self.stdout.write('  🌐 Frontend: http://localhost:8080')
         self.stdout.write('=' * 60)
         self.stdout.write('')
+
+

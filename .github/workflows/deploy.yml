@@ -18,9 +18,11 @@ jobs:
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
           docker compose -f docker-compose.yml build
           docker tag sipro-backend:latest $DOCKER_USERNAME/sipro-backend:latest
-          docker tag sipro-frontend:latest $DOCKER_USERNAME/sipro-frontend:latest
+          docker tag sipro-app:latest $DOCKER_USERNAME/sipro-app:latest
+          docker tag sipro-portal:latest $DOCKER_USERNAME/sipro-portal:latest
           docker push $DOCKER_USERNAME/sipro-backend:latest
-          docker push $DOCKER_USERNAME/sipro-frontend:latest
+          docker push $DOCKER_USERNAME/sipro-app:latest
+          docker push $DOCKER_USERNAME/sipro-portal:latest
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1

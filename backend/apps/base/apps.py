@@ -7,13 +7,13 @@ class BaseConfig(AppConfig):
 
     def ready(self):
         from . import audit_signals
-        from .models import (
+        from src.infrastructure.models.base_model import (
             AuditoriaEmpresa, AuditoriaSucursal, AuditoriaAlmacen,
             AuditoriaUsuario, AuditoriaRol, AuditoriaPermiso,
             AuditoriaUsuarioRol, AuditoriaRolPermiso, AuditoriaSesionUsuario,
         )
-        from apps.empresa.models import Empresa, Sucursal, Almacen
-        from apps.seguridad.models import Usuario, Rol, Permiso, UsuarioRol, RolPermiso, SesionUsuario
+        from src.infrastructure.models.empresa_model import Empresa, Sucursal, Almacen
+        from src.infrastructure.models.seguridad_model import Usuario, Rol, Permiso, UsuarioRol, RolPermiso, SesionUsuario
 
         audit_signals.register_audit(Empresa, AuditoriaEmpresa)
         audit_signals.register_audit(Sucursal, AuditoriaSucursal)

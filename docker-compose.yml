@@ -5,9 +5,10 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: sipro
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${DB_NAME:-sipro}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8'
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
@@ -39,7 +40,11 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DB_HOST: postgres
+      DB_NAME: ${DB_NAME:-sipro}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
       REDIS_URL: redis://redis:6379/1
+      LOAD_DEMO: "true"
     env_file:
       - .env
     depends_on:
@@ -47,17 +52,34 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; r = urllib.request.urlopen('http://localhost:8000/portal/auth/', data=b'{}', timeout=5); sys.exit(0 if r.status in (200,400,401,405) else 1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     volumes:
       - ./backend:/app
       - ./backend/media:/app/media
       - ./backend/static:/app/static
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
     command: python manage.py runserver 0.0.0.0:8000
 
-  frontend:
+  portal:
     build:
       context: .
-      dockerfile: infra/docker/frontend.Dockerfile
-    container_name: sipro-frontend
+      dockerfile: infra/docker/portal.Dockerfile
+    container_name: sipro-portal
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+
+  app:
+    build:
+      context: .
+      dockerfile: infra/docker/app.Dockerfile
+    container_name: sipro-app
     ports:
       - "8080:80"
     depends_on:
