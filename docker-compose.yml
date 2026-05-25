@@ -30,21 +30,23 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
+  portal-api:
     build:
       context: .
       dockerfile: infra/docker/backend.Dockerfile
-    container_name: sipro-backend
+    container_name: sipro-portal-api
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DJANGO_SETTINGS_MODULE: config.settings.portal_api
       DB_HOST: postgres
       DB_NAME: ${DB_NAME:-sipro}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       REDIS_URL: redis://redis:6379/1
       LOAD_DEMO: "true"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      FERNET_KEY: ${FERNET_KEY}
     env_file:
       - .env
     depends_on:
@@ -53,7 +55,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request, sys; r = urllib.request.urlopen('http://localhost:8000/portal/auth/', data=b'{}', timeout=5); sys.exit(0 if r.status in (200,400,401,405) else 1)"]
+      test: ["CMD", "python", "healthcheck.py"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -65,6 +67,39 @@ services:
     entrypoint: ["/usr/local/bin/entrypoint.sh"]
     command: python manage.py runserver 0.0.0.0:8000
 
+  tenant-api:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    container_name: sipro-tenant-api
+    ports:
+      - "8002:8000"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.tenant_api
+      DB_HOST: postgres
+      DB_NAME: ${DB_NAME:-sipro}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      REDIS_URL: redis://redis:6379/1
+      LOAD_DEMO: "false"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      FERNET_KEY: ${FERNET_KEY}
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      portal-api:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - ./backend/media:/app/media
+      - ./backend/static:/app/static
+    entrypoint: ["/usr/local/bin/entrypoint.tenant.sh"]
+    command: python manage.py runserver 0.0.0.0:8000
+
   portal:
     build:
       context: .
@@ -73,17 +108,7 @@ services:
     ports:
       - "8081:80"
     depends_on:
-      - backend
-
-  app:
-    build:
-      context: .
-      dockerfile: infra/docker/app.Dockerfile
-    container_name: sipro-app
-    ports:
-      - "8080:80"
-    depends_on:
-      - backend
+      - portal-api
 
 volumes:
   postgres-data:

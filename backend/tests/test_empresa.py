@@ -1,6 +1,6 @@
 import pytest
 from rest_framework import status
-from src.infrastructure.models.empresa_model import Empresa
+from infrastructure.models.empresa_model import Empresa
 
 
 class TestEmpresa:

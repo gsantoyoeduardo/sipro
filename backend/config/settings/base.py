@@ -4,14 +4,11 @@ from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-dev-key-change-in-production')
+SECRET_KEY = config('DJANGO_SECRET_KEY')
 
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
-if not DEBUG and SECRET_KEY == 'django-insecure-dev-key-change-in-production':
-    raise RuntimeError('DJANGO_SECRET_KEY must be set in production')
-
-ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0,backend').split(',')
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1,backend').split(',')
 
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -26,11 +23,13 @@ THIRD_PARTY_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'corsheaders',
+    'csp',
 ]
 
 try:
-    import drf_yasg  # noqa: F401
-    THIRD_PARTY_APPS += ['drf_yasg']
+    import drf_spectacular  # noqa: F401
+    THIRD_PARTY_APPS += ['drf_spectacular']
 except ImportError:
     pass
 
@@ -42,23 +41,25 @@ LOCAL_APPS = [
     'apps.inventario',
     'apps.picking',
     'apps.transferencia',
-    'apps.dashboard',
-    'apps.seed',
-    'apps.portal',
-    'apps.tenant',
+
+    'portal',
+    'tenant',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'src.infrastructure.middleware.csrf_middleware.DisableCSRFMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'src.infrastructure.middleware.tenant_middleware.TenantMiddleware',
+    'infrastructure.middleware.tenant_middleware.TenantMiddleware',
+    'infrastructure.middleware.tenant_guard.TenantGuardMiddleware',
+    'infrastructure.middleware.portal_guard.PortalGuardMiddleware',
+    'infrastructure.middleware.audit_middleware.AuditMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -105,15 +106,18 @@ AUTH_USER_MODEL = 'seguridad.Usuario'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'src.infrastructure.permissions.RolePermission',
+        'infrastructure.permissions.RolePermission',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'PAGE_SIZE': 25,
     'DEFAULT_RENDERER_CLASSES': (
-        'src.infrastructure.renderers.UTF8JSONRenderer',
+        'infrastructure.renderers.UTF8JSONRenderer',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'infrastructure.swagger_utils.TagsAutoSchema',
 }
 
 SIMPLE_JWT = {
@@ -126,6 +130,15 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+FERNET_KEYS = [config('FERNET_KEY')]
+
+if not DEBUG:
+    if not SECRET_KEY or SECRET_KEY.startswith('django-insecure'):
+        raise RuntimeError('DJANGO_SECRET_KEY must be changed in production')
+    fernet_default = 'dGhpcyBpcyBhIHRlc3QgZmVybmV0IGtleSBmb3IgZGV2=='
+    if any(k == fernet_default for k in FERNET_KEYS):
+        raise RuntimeError('FERNET_KEY must be changed in production')
 
 CACHES = {
     'default': {
@@ -149,8 +162,46 @@ REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
 CSRF_TRUSTED_ORIGINS = [origin for origin in config('CSRF_TRUSTED_ORIGINS', default='http://localhost:8080,http://localhost:8081,http://127.0.0.1:8080,http://127.0.0.1:8081').split(',') if origin]
 
 CSRF_USE_SESSIONS = False
-CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
+
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:8080,http://localhost:8081').split(',')
+CORS_ALLOW_CREDENTIALS = True
+
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ("'self'",),
+        'style-src': ("'self'", "'unsafe-inline'"),
+        'script-src': ("'self'",),
+        'img-src': ("'self'", "data:"),
+        'font-src': ("'self'",),
+    }
+}
+
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_BROWSER_XSS_FILTER = True
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'SIPRO API',
+    'DESCRIPTION': 'Sistema SIPRO WMS',
+    'VERSION': 'v1',
+    'CONTACT': {'email': 'admin@sipro.com'},
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'] if DEBUG else ['rest_framework.permissions.IsAuthenticated'],
+    'SCHEMA_PATH_PREFIX': r'/api/',
+    'POSTPROCESSING_HOOKS': ['infrastructure.swagger_hooks.add_examples'],
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'defaultModelRendering': 'example',
+        'defaultModelsExpandDepth': 3,
+        'docExpansion': 'list',
+        'displayOperationId': False,
+        'tryItOutEnabled': True,
+    },
+}
 
 LOGGING = {
     'version': 1,

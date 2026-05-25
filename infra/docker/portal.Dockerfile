@@ -6,7 +6,6 @@ COPY frontend/portal/package.json frontend/portal/package-lock.json ./
 RUN npm ci
 
 COPY frontend/portal/ ./
-COPY frontend/shared/ ../shared/
 RUN npm run build
 
 FROM nginx:alpine

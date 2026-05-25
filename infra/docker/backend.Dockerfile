@@ -6,7 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 COPY infra/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY infra/docker/entrypoint.tenant.sh /usr/local/bin/entrypoint.tenant.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/entrypoint.tenant.sh
 
 COPY backend/requirements/base.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt

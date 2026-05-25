@@ -1,11 +1,22 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from django.db import models
 from django.db.models.signals import post_save, pre_save, pre_delete
 from django.dispatch import receiver
 
 AUDIT_MAP = {}
-AUDIT_ENABLED = True
+
+SENSITIVE_FIELDS = frozenset({'password', 'tokenjwt', 'refreshtoken', 'secret', 'secret_key'})
+
+
+def _audit_habilitada():
+    from infrastructure.models.base_model import ConfiguracionAuditoria
+    try:
+        config = ConfiguracionAuditoria.objects.first()
+        return config.auditoria_habilitada if config else True
+    except Exception:
+        return True
 
 
 def register_audit(model_class, audit_model_class):
@@ -16,12 +27,16 @@ def serialize_instance(instance):
     data = {}
     for field in instance._meta.fields:
         value = getattr(instance, field.name)
-        if isinstance(value, models.Model):
+        if field.name in SENSITIVE_FIELDS:
+            data[field.name] = '*** REDACTED ***'
+        elif isinstance(value, models.Model):
             data[field.name] = str(value.pk)
         elif isinstance(value, uuid.UUID):
             data[field.name] = str(value)
         elif isinstance(value, datetime):
             data[field.name] = value.isoformat()
+        elif isinstance(value, Decimal):
+            data[field.name] = float(value)
         elif hasattr(value, 'isoformat'):
             data[field.name] = value.isoformat()
         else:
@@ -40,7 +55,7 @@ def get_client_ip(request):
 
 @receiver(pre_save)
 def capture_pre_save_state(sender, instance, **kwargs):
-    if not AUDIT_ENABLED or sender not in AUDIT_MAP or not instance.pk:
+    if sender not in AUDIT_MAP or not instance.pk or not _audit_habilitada():
         return
     try:
         old = sender.objects.get(pk=instance.pk)
@@ -51,7 +66,7 @@ def capture_pre_save_state(sender, instance, **kwargs):
 
 @receiver(post_save)
 def audit_post_save(sender, instance, created, **kwargs):
-    if not AUDIT_ENABLED or sender not in AUDIT_MAP:
+    if sender not in AUDIT_MAP or not _audit_habilitada():
         return
     audit_model = AUDIT_MAP[sender]
     new_data = serialize_instance(instance)
@@ -81,7 +96,7 @@ def audit_post_save(sender, instance, created, **kwargs):
 
 @receiver(pre_delete)
 def audit_pre_delete(sender, instance, **kwargs):
-    if not AUDIT_ENABLED or sender not in AUDIT_MAP:
+    if sender not in AUDIT_MAP or not _audit_habilitada():
         return
     audit_model = AUDIT_MAP[sender]
     old_data = serialize_instance(instance)

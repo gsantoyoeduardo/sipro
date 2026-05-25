@@ -1,1 +1,1 @@
-from src.infrastructure.models.layout_model import Zona, Pasillo, Estante, Nivel, Ubicacion, Nodo, Conexion
+from infrastructure.models.layout_model import Zona, Estante, Nivel, Ubicacion, Nodo, Conexion

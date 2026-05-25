@@ -1,1 +1,1 @@
-from src.infrastructure.models.inventario_model import Categoria, Producto, Lote, Inventario, Kardex
+from infrastructure.models.inventario_model import Categoria, Producto, Lote, Inventario, Kardex

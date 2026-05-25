@@ -28,7 +28,7 @@ class TestPortalAuth:
 
     def test_logout(self, api_client, portal_auth_headers):
         from rest_framework_simplejwt.tokens import RefreshToken
-        from src.infrastructure.models.seguridad_model import Usuario
+        from infrastructure.models.seguridad_model import Usuario
         admin = Usuario.objects.get(usuario='admin')
         refresh = RefreshToken.for_user(admin)
         response = api_client.post('/portal/auth/logout/', {

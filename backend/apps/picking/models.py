@@ -1,1 +1,1 @@
-from src.infrastructure.models.picking_model import OrdenPicking, DetallePicking, Incidencia
+from infrastructure.models.picking_model import OrdenPicking, DetallePicking, Incidencia

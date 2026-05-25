@@ -1,6 +1,6 @@
 import pytest
 from rest_framework import status
-from src.infrastructure.middleware.tenant_middleware import get_current_tenant, _valid_uuid
+from infrastructure.middleware.tenant_middleware import get_current_tenant, _valid_uuid
 
 
 class TestTenantMiddleware:
