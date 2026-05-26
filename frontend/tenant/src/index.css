@@ -1,5 +1,43 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primario: #003366;
+  --color-primario-hover: #002B55;
+  --color-primario-claro: #007BFF;
+  --color-primario-oscuro: #002244;
+  --color-primario-mas-oscuro: #001A33;
+
+  --color-barra-lateral: #003366;
+  --color-barra-lateral-hover: #004080;
+  --color-barra-lateral-activo: #FF8800;
+
+  --color-accion: #FF8800;
+  --color-accion-hover: #E67700;
+
+  --color-texto: #4A4A4A;
+  --color-texto-secundario: #6B7280;
+
+  --color-fondo: #F8FAFC;
+  --color-fondo-blanco: #FFFFFF;
+  --color-fondo-sutil: #F1F5F9;
+
+  --color-borde: #E5E7EB;
+  --color-borde-suave: #F3F4F6;
+
+  --color-exito: #10B981;
+  --color-exito-suave: #D1FAE5;
+  --color-exito-texto: #065F46;
+  --color-peligro: #EF4444;
+  --color-peligro-suave: #FEE2E2;
+  --color-peligro-texto: #991B1B;
+  --color-advertencia: #FF8800;
+  --color-advertencia-suave: #FFF3E0;
+  --color-morado: #8B5CF6;
+  --color-morado-suave: #EDE9FE;
+  --color-azul-suave: #DBEAFE;
+  --color-azul-texto: #1E40AF;
+}
+
 @keyframes slide-in {
   from {
     opacity: 0;
@@ -13,4 +51,13 @@
 
 @utility animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

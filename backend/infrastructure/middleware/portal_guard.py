@@ -3,8 +3,11 @@ from django.http import JsonResponse
 
 class PortalGuardMiddleware:
 
-    PORTAL_PREFIXES = ('/portal/',)
-    AUTH_PATHS = ('/portal/auth/', '/portal/swagger/', '/portal/redoc/', '/portal/schema/')
+    PORTAL_PREFIXES = ('/empresa/', '/permisos/', '/roles/', '/usuarios/', '/auditorias/')
+    AUTH_PATHS = (
+        '/auth/iniciar-sesion/', '/auth/cerrar-sesion/', '/auth/refrescar/',
+        '/auth/me/', '/admin/',
+    )
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -16,6 +19,9 @@ class PortalGuardMiddleware:
             return self.get_response(request)
 
         if not any(path.startswith(prefix) for prefix in self.PORTAL_PREFIXES):
+            return self.get_response(request)
+
+        if request.META.get('HTTP_AUTHORIZATION', '').startswith('Bearer '):
             return self.get_response(request)
 
         if not hasattr(request, 'user') or not request.user.is_authenticated:

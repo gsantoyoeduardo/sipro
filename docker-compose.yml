@@ -110,6 +110,16 @@ services:
     depends_on:
       - portal-api
 
+  tenant:
+    build:
+      context: .
+      dockerfile: infra/docker/tenant.Dockerfile
+    container_name: sipro-tenant
+    ports:
+      - "8082:80"
+    depends_on:
+      - tenant-api
+
 volumes:
   postgres-data:
   redis-data:

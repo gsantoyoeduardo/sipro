@@ -1,33 +1,38 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
-import AdminDashboardPage from './pages/AdminDashboardPage'
+import DashboardPage from './pages/DashboardPage'
+import ListaEmpresaPage from './pages/ListaEmpresaPage'
+import DetalleEmpresaPage from './pages/DetalleEmpresaPage'
 import CrearEmpresaPage from './pages/CrearEmpresaPage'
-import EmpresaListPage from './pages/EmpresaListPage'
-import MainLayout from './components/layout/MainLayout'
+import ListaUsuariosPage from './pages/usuarios/ListaUsuariosPage'
+import ListaRolesPage from './pages/roles/ListaRolesPage'
+import AuditoriaPage from './pages/auditoria/AuditoriaPage'
+import LayoutPrincipal from './layout/LayoutPrincipal'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = localStorage.getItem('access_token') !== null
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
+  return isAuthenticated ? <>{children}</> : <Navigate to="/iniciar-sesion" replace />
 }
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/iniciar-sesion" element={<LoginPage />} />
+        <Route path="/" element={<Navigate to="/iniciar-sesion" replace />} />
         <Route
           path="/admin"
-          element={<PrivateRoute><MainLayout /></PrivateRoute>}
+          element={<PrivateRoute><LayoutPrincipal /></PrivateRoute>}
         >
-          <Route index element={<AdminDashboardPage />} />
+          <Route index element={<DashboardPage />} />
+          <Route path="empresas" element={<ListaEmpresaPage />} />
+          <Route path="empresas/:id" element={<DetalleEmpresaPage />} />
           <Route path="crear" element={<CrearEmpresaPage />} />
-          <Route path="empresas" element={<EmpresaListPage />} />
-          <Route path="usuarios" element={<div className="text-[#64748B] p-8 text-center">Módulo de Usuarios — Próximamente</div>} />
-          <Route path="roles" element={<div className="text-[#64748B] p-8 text-center">Módulo de Roles — Próximamente</div>} />
-          <Route path="auditoria" element={<div className="text-[#64748B] p-8 text-center">Módulo de Auditoría — Próximamente</div>} />
+          <Route path="usuarios" element={<ListaUsuariosPage />} />
+          <Route path="roles" element={<ListaRolesPage />} />
+          <Route path="auditoria" element={<AuditoriaPage />} />
         </Route>
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/iniciar-sesion" replace />} />
       </Routes>
     </BrowserRouter>
   )

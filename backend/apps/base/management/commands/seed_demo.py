@@ -2,15 +2,17 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
+from django.db import connection
 from django.utils import timezone
 
-from apps.base import audit_signals
 from infrastructure.models.empresa_model import Almacen, Empresa, Sucursal
 from infrastructure.models.inventario_model import Categoria, Inventario, Kardex, Lote, Producto
 from infrastructure.models.layout_model import Conexion, Estante, Nivel, Nodo, Ubicacion, Zona
 from infrastructure.models.picking_model import DetallePicking, Incidencia, OrdenPicking
 from infrastructure.models.seguridad_model import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
 from infrastructure.models.transferencia_model import DetalleTransferencia, Transferencia
+from infrastructure.utils.tenant_schema import tenant_schema
+from application.services.empresa.tenant_service import TenantService
 
 
 EMPRESAS_DATA = [
@@ -52,6 +54,36 @@ EMPRESAS_DATA = [
     },
 ]
 
+PERMISOS_PORTAL = [
+    ('ver_empresa', 'Ver Empresas', 'Visualizar listado y detalle de empresas'),
+    ('crear_empresa', 'Crear Empresas', 'Registrar nuevas empresas'),
+    ('editar_empresa', 'Editar Empresas', 'Modificar datos de empresas'),
+    ('eliminar_empresa', 'Eliminar Empresas', 'Desactivar empresas'),
+    ('ver_seguridad', 'Ver Seguridad', 'Visualizar usuarios, roles y permisos del portal'),
+    ('gestionar_seguridad', 'Gestionar Seguridad', 'Crear/editar usuarios, roles y permisos del portal'),
+]
+
+PERMISOS_TENANT = [
+    ('ver_sucursal', 'Ver Sucursales', 'Visualizar sucursales'),
+    ('crear_sucursal', 'Crear Sucursales', 'Registrar nuevas sucursales'),
+    ('editar_sucursal', 'Editar Sucursales', 'Modificar sucursales'),
+    ('eliminar_sucursal', 'Eliminar Sucursales', 'Desactivar sucursales'),
+    ('ver_almacen', 'Ver Almacenes', 'Visualizar almacenes'),
+    ('crear_almacen', 'Crear Almacenes', 'Registrar nuevos almacenes'),
+    ('editar_almacen', 'Editar Almacenes', 'Modificar almacenes'),
+    ('eliminar_almacen', 'Eliminar Almacenes', 'Desactivar almacenes'),
+    ('ver_layout', 'Ver Layout', 'Visualizar layout del almacén'),
+    ('gestionar_layout', 'Gestionar Layout', 'Crear/editar zonas, estantes, etc.'),
+    ('ver_inventario', 'Ver Inventario', 'Visualizar productos, stock y kardex'),
+    ('gestionar_inventario', 'Gestionar Inventario', 'Crear/editar productos, lotes y stock'),
+    ('registrar_kardex', 'Registrar Kardex', 'Registrar entradas/salidas de inventario'),
+    ('ver_picking', 'Ver Picking', 'Visualizar órdenes de picking'),
+    ('gestionar_picking', 'Gestionar Picking', 'Crear/editar órdenes y reportar incidencias'),
+    ('ver_transferencia', 'Ver Transferencias', 'Visualizar transferencias'),
+    ('gestionar_transferencia', 'Gestionar Transferencias', 'Crear/enviar/recibir transferencias'),
+    ('ver_dashboard', 'Ver Dashboard', 'Visualizar KPIs y estadísticas'),
+]
+
 CATEGORIAS_DATA = [
     ('Electrónicos', 'Dispositivos y componentes electrónicos'),
     ('Alimentos', 'Productos alimenticios y perecibles'),
@@ -86,35 +118,9 @@ PRODUCTOS_DATA = [
     ('SKU-022', 'Candado Seguridad 40mm', 'Ferretería', 'Candado de seguridad 40mm acero', 'unidad', Decimal('0.300'), Decimal('0.0003'), Decimal('15.00'), Decimal('25.00'), False),
 ]
 
-PERMISOS_DATA = [
-    ('ver_empresa', 'Ver Empresas', 'Visualizar listado y detalle de empresas'),
-    ('crear_empresa', 'Crear Empresas', 'Registrar nuevas empresas'),
-    ('editar_empresa', 'Editar Empresas', 'Modificar datos de empresas'),
-    ('eliminar_empresa', 'Eliminar Empresas', 'Desactivar empresas'),
-    ('ver_sucursal', 'Ver Sucursales', 'Visualizar sucursales'),
-    ('crear_sucursal', 'Crear Sucursales', 'Registrar nuevas sucursales'),
-    ('editar_sucursal', 'Editar Sucursales', 'Modificar sucursales'),
-    ('eliminar_sucursal', 'Eliminar Sucursales', 'Desactivar sucursales'),
-    ('ver_almacen', 'Ver Almacenes', 'Visualizar almacenes'),
-    ('crear_almacen', 'Crear Almacenes', 'Registrar nuevos almacenes'),
-    ('editar_almacen', 'Editar Almacenes', 'Modificar almacenes'),
-    ('eliminar_almacen', 'Eliminar Almacenes', 'Desactivar almacenes'),
-    ('ver_seguridad', 'Ver Seguridad', 'Visualizar usuarios, roles y permisos'),
-    ('gestionar_seguridad', 'Gestionar Seguridad', 'Crear/editar usuarios, roles y permisos'),
-    ('ver_layout', 'Ver Layout', 'Visualizar layout del almacén'),
-    ('gestionar_layout', 'Gestionar Layout', 'Crear/editar zonas, estantes, etc.'),
-    ('ver_inventario', 'Ver Inventario', 'Visualizar productos, stock y kardex'),
-    ('gestionar_inventario', 'Gestionar Inventario', 'Crear/editar productos, lotes y stock'),
-    ('registrar_kardex', 'Registrar Kardex', 'Registrar entradas/salidas de inventario'),
-    ('ver_picking', 'Ver Picking', 'Visualizar órdenes de picking'),
-    ('gestionar_picking', 'Gestionar Picking', 'Crear/editar órdenes y reportar incidencias'),
-    ('ver_transferencia', 'Ver Transferencias', 'Visualizar transferencias'),
-    ('gestionar_transferencia', 'Gestionar Transferencias', 'Crear/enviar/recibir transferencias'),
-    ('ver_dashboard', 'Ver Dashboard', 'Visualizar KPIs y estadísticas'),
-]
 
 class Command(BaseCommand):
-    help = 'Precarga datos demo para SIPRO WMS'
+    help = 'Precarga datos demo para SIPRO WMS con arquitectura multi-tenant'
 
     def add_arguments(self, parser):
         parser.add_argument('--reset', action='store_true', help='Eliminar todo y recrear')
@@ -123,11 +129,11 @@ class Command(BaseCommand):
         if options['reset']:
             self._reset_all()
         self._print_header()
-        self._seed_permisos()
+        self._seed_permisos_portal()
+        self._seed_admin_sistema()
         self._today = date.today()
         for i, emp_data in enumerate(EMPRESAS_DATA):
-            self._seed_empresa(emp_data, i)
-        self._seed_global_kardex()
+            self._seed_empresa_con_tenant(emp_data, i)
         self._print_summary()
 
     def _log(self, icon, label, count=None):
@@ -143,37 +149,58 @@ class Command(BaseCommand):
     def _print_header(self):
         self.stdout.write('')
         self.stdout.write('=' * 60)
-        self.stdout.write('  SIPRO WMS - Carga de Datos Demo (3 Empresas)')
+        self.stdout.write('  SIPRO WMS - Carga de Datos Demo (Multi-Tenant)')
         self.stdout.write('=' * 60)
 
     def _reset_all(self):
         self.stdout.write('\n** Eliminando datos existentes...')
-        models = [
-            Incidencia, DetallePicking, OrdenPicking,
-            DetalleTransferencia, Transferencia,
-            Kardex, Inventario, Lote, Producto, Categoria,
-            Conexion, Nodo, Ubicacion, Nivel, Estante, Zona,
-            UsuarioRol, RolPermiso,
-            Almacen, Sucursal, Usuario, Rol, Permiso, Empresa,
-        ]
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'empresa_%'")
+            schemas = [row[0] for row in cursor.fetchall()]
+            for schema in schemas:
+                cursor.execute(f"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE")
+                self.stdout.write(f'   Schema eliminado: {schema}')
+
         from infrastructure.models.seguridad_model import SesionUsuario
         SesionUsuario.objects.all().delete()
-        for model in models:
-            model.objects.all().delete()
-        self.stdout.write('   Datos eliminados.')
+        Usuario.objects.filter(tipo_usuario='admin_sistema').delete()
+        Permiso.objects.all().delete()
+        Rol.objects.all().delete()
+        RolPermiso.objects.all().delete()
+        UsuarioRol.objects.all().delete()
+        Empresa.objects.all().delete()
+        self.stdout.write('   Datos de public eliminados.')
 
-    def _seed_permisos(self):
-        self._section(' Permisos:')
-        self._permisos = {}
-        for codigo, nombre, descripcion in PERMISOS_DATA:
+    def _seed_permisos_portal(self):
+        self._section(' Permisos del Portal (public):')
+        self._permisos_portal = {}
+        for codigo, nombre, descripcion in PERMISOS_PORTAL:
             p, _ = Permiso.objects.get_or_create(
                 codigo=codigo,
                 defaults={'nombre': nombre, 'descripcion': descripcion},
             )
-            self._permisos[codigo] = p
-        self._log('', 'Permisos creados', len(PERMISOS_DATA))
+            self._permisos_portal[codigo] = p
+        self._log('', 'Permisos portal creados', len(PERMISOS_PORTAL))
 
-    def _seed_empresa(self, emp_data, idx):
+    def _seed_admin_sistema(self):
+        self._section(' Administrador del Sistema (public):')
+        admin, _ = Usuario.objects.get_or_create(
+            usuario='admin',
+            defaults={
+                'correo': 'admin@sipro.com',
+                'nombres': 'Admin',
+                'apellidos': 'SIPRO',
+                'tipo_usuario': 'admin_sistema',
+                'idempresa': None,
+                'is_staff': True,
+                'is_superuser': True,
+            },
+        )
+        admin.set_password('admin1234')
+        admin.save(update_fields=['password'])
+        self._log('', 'Usuario', f'{admin.usuario} (Admin Sistema)')
+
+    def _seed_empresa_con_tenant(self, emp_data, idx):
         empresa_num = idx + 1
         self._section(f' Empresa {empresa_num}: {emp_data["razonsocial"]}')
 
@@ -187,10 +214,149 @@ class Command(BaseCommand):
                 'direccion': emp_data['direccion'],
             },
         )
-        self._log('', 'Empresa', empresa.razonsocial)
+        self._log('', 'Empresa (public)', empresa.razonsocial)
 
+        schema_name = TenantService.crear_schema_tenant(empresa.idempresa)
+        TenantService.ejecutar_migraciones_tenant(schema_name)
+        self._log('', 'Schema tenant creado', schema_name)
+
+        from infrastructure.models.empresa_model import Empresa as EmpresaModel
+
+        with tenant_schema(str(empresa.idempresa)):
+            EmpresaModel.objects.get_or_create(
+                idempresa=empresa.idempresa,
+                defaults={
+                    'razonsocial': emp_data['razonsocial'],
+                    'nombrecomercial': emp_data['nombrecomercial'],
+                    'correo': emp_data['correo'],
+                    'telefono': emp_data['telefono'],
+                    'direccion': emp_data['direccion'],
+                },
+            )
+
+            admin_suffix = '' if idx == 0 else str(idx + 1)
+            admin_usuario = f'admin{admin_suffix}'
+            admin, _ = Usuario.objects.get_or_create(
+                usuario=admin_usuario,
+                defaults={
+                    'correo': f'{admin_usuario}@sipro.com',
+                    'nombres': 'Admin',
+                    'apellidos': f'Empresa {empresa_num}',
+                    'tipo_usuario': 'admin_empresa',
+                    'idempresa': empresa,
+                },
+            )
+            admin.set_password('admin1234')
+            admin.save(update_fields=['password'])
+            self._log('', 'Usuario (tenant)', f'{admin.usuario} (Admin Empresa)')
+
+            self._seed_permisos_tenant()
+            self._seed_roles_tenant(empresa, admin)
+
+            sucursales, almacenes = self._seed_sucursales_almacenes(
+                emp_data['sucursales'], empresa, empresa_num
+            )
+
+            self._seed_layout(sucursales[0], almacenes[0], idx)
+            productos = self._seed_inventario()
+            self._seed_kardex_tenant()
+            self._seed_picking(almacenes[0], productos, idx)
+            if len(almacenes) >= 2:
+                self._seed_transferencias(almacenes[0], almacenes[1], idx, productos)
+
+    def _seed_permisos_tenant(self):
+        self._permisos_tenant = {}
+        for codigo, nombre, descripcion in PERMISOS_TENANT:
+            p, _ = Permiso.objects.get_or_create(
+                codigo=codigo,
+                defaults={'nombre': nombre, 'descripcion': descripcion},
+            )
+            self._permisos_tenant[codigo] = p
+
+    def _seed_roles_tenant(self, empresa, admin):
+        rol_admin, _ = self._safe_get_or_create(
+            Rol,
+            {'idempresa': empresa, 'nombre': 'Super Administrador'},
+            {'descripcion': 'Acceso total al sistema'},
+        )
+        for permiso in self._permisos_tenant.values():
+            RolPermiso.objects.get_or_create(idrol=rol_admin, idpermiso=permiso)
+        UsuarioRol.objects.get_or_create(idusuario=admin, idrol=rol_admin)
+        self._log('', 'Rol', f'{rol_admin.nombre} ({len(self._permisos_tenant)} permisos)')
+
+        supervisor_codes = [
+            k for k in self._permisos_tenant
+            if k.startswith('ver_') or k in (
+                'gestionar_picking', 'gestionar_inventario',
+                'gestionar_transferencia', 'gestionar_layout',
+            )
+        ]
+        rol_supervisor, _ = self._safe_get_or_create(
+            Rol,
+            {'idempresa': empresa, 'nombre': 'Supervisor'},
+            {'descripcion': 'Supervisa operaciones de almacén'},
+        )
+        for key in supervisor_codes:
+            RolPermiso.objects.get_or_create(idrol=rol_supervisor, idpermiso=self._permisos_tenant[key])
+
+        sup_suffix = '' if empresa.ruc == '20123456789' else str(EMPRESAS_DATA.index(next(e for e in EMPRESAS_DATA if e['ruc'] == empresa.ruc)) + 1)
+        sup_usuario = f'supervisor{sup_suffix}'
+        sup, _ = Usuario.objects.get_or_create(
+            usuario=sup_usuario,
+            defaults={
+                'correo': f'{sup_usuario}@sipro.com',
+                'nombres': f'Supervisor',
+                'apellidos': 'Empresa',
+                'idempresa': empresa,
+                'tipo_usuario': 'admin_empresa',
+            },
+        )
+        sup.set_password('demo1234')
+        sup.save(update_fields=['password'])
+        UsuarioRol.objects.get_or_create(idusuario=sup, idrol=rol_supervisor)
+        self._log('', 'Rol', f'{rol_supervisor.nombre} ({len(supervisor_codes)} permisos)')
+        self._log('', 'Usuario (tenant)', f'{sup_usuario} (Supervisor)')
+
+        operario_codes = [
+            'ver_dashboard', 'ver_inventario', 'ver_picking',
+            'gestionar_picking', 'registrar_kardex',
+        ]
+        rol_operario, _ = self._safe_get_or_create(
+            Rol,
+            {'idempresa': empresa, 'nombre': 'Operario'},
+            {'descripcion': 'Operario de almacén'},
+        )
+        for key in operario_codes:
+            RolPermiso.objects.get_or_create(idrol=rol_operario, idpermiso=self._permisos_tenant[key])
+
+        op_suffix = '' if empresa.ruc == '20123456789' else str(EMPRESAS_DATA.index(next(e for e in EMPRESAS_DATA if e['ruc'] == empresa.ruc)) + 1)
+        op_usuario = f'operario{op_suffix}'
+        op, _ = Usuario.objects.get_or_create(
+            usuario=op_usuario,
+            defaults={
+                'correo': f'{op_usuario}@sipro.com',
+                'nombres': f'Operario',
+                'apellidos': 'Almacén',
+                'idempresa': empresa,
+                'tipo_usuario': 'operador',
+            },
+        )
+        op.set_password('demo1234')
+        op.save(update_fields=['password'])
+        UsuarioRol.objects.get_or_create(idusuario=op, idrol=rol_operario)
+        self._log('', 'Rol', f'{rol_operario.nombre} ({len(operario_codes)} permisos)')
+        self._log('', 'Usuario (tenant)', f'{op_usuario} (Operario)')
+
+        self._rol_admin = rol_admin
+        self._rol_supervisor = rol_supervisor
+        self._rol_operario = rol_operario
+        self._admin = admin
+        self._supervisor = sup
+        self._operario = op
+
+    def _seed_sucursales_almacenes(self, sucursales_data, empresa, empresa_num):
         sucursales = []
-        for s in emp_data['sucursales']:
+        for s in sucursales_data:
             suc, _ = Sucursal.objects.get_or_create(
                 idempresa=empresa,
                 codigo=s['codigo'],
@@ -218,118 +384,13 @@ class Command(BaseCommand):
             almacenes.append(a)
             self._log('', 'Almacén', f'{a.nombre} ({a.codigo})')
 
-        self._seed_roles(empresa)
-        self._seed_usuarios(empresa, idx)
-        self._seed_layout(sucursales[0], almacenes[0], idx)
-        productos = self._seed_inventario()
-        self._seed_picking(almacenes[0], productos, idx)
-        if len(almacenes) >= 2:
-            self._seed_transferencias(almacenes[0], almacenes[1], idx, productos)
-
-    def _seed_roles(self, empresa):
-        rol_admin, _ = self._safe_get_or_create(
-            Rol,
-            {'idempresa': empresa, 'nombre': 'Administrador'},
-            {'descripcion': 'Acceso total al sistema'},
-        )
-        for permiso in self._permisos.values():
-            RolPermiso.objects.get_or_create(idrol=rol_admin, idpermiso=permiso)
-        self._log('', 'Rol', f'{rol_admin.nombre} ({len(self._permisos)} permisos)')
-
-        supervisor_codes = [
-            k for k in self._permisos
-            if k.startswith('ver_') or k in (
-                'gestionar_picking', 'gestionar_inventario',
-                'gestionar_transferencia', 'gestionar_layout',
-            )
-        ]
-        rol_supervisor, _ = self._safe_get_or_create(
-            Rol,
-            {'idempresa': empresa, 'nombre': 'Supervisor'},
-            {'descripcion': 'Supervisa operaciones de almacén'},
-        )
-        for key in supervisor_codes:
-            RolPermiso.objects.get_or_create(idrol=rol_supervisor, idpermiso=self._permisos[key])
-        self._log('', 'Rol', f'{rol_supervisor.nombre} ({len(supervisor_codes)} permisos)')
-
-        operario_codes = [
-            'ver_dashboard', 'ver_inventario', 'ver_picking',
-            'gestionar_picking', 'registrar_kardex',
-        ]
-        rol_operario, _ = self._safe_get_or_create(
-            Rol,
-            {'idempresa': empresa, 'nombre': 'Operario'},
-            {'descripcion': 'Operario de almacén'},
-        )
-        for key in operario_codes:
-            RolPermiso.objects.get_or_create(idrol=rol_operario, idpermiso=self._permisos[key])
-        self._log('', 'Rol', f'{rol_operario.nombre} ({len(operario_codes)} permisos)')
-
-        self._rol_admin = rol_admin
-        self._rol_supervisor = rol_supervisor
-        self._rol_operario = rol_operario
-
-    def _seed_usuarios(self, empresa, idx):
-        suffix = '' if idx == 0 else str(idx + 1)
-        admin_name = f'admin{suffix}' if suffix else 'admin'
-
-        admin, _ = Usuario.objects.update_or_create(
-            usuario=admin_name,
-            defaults={
-                'correo': f'{admin_name}@sipro.com',
-                'nombres': 'Admin',
-                'apellidos': f'Empresa {idx + 1}',
-                'tipo_usuario': 'admin_sistema' if idx == 0 else 'admin_empresa',
-                'idempresa': empresa if idx > 0 else None,
-                'is_staff': True,
-                'is_superuser': idx == 0,
-            },
-        )
-        admin.set_password('admin1234')
-        admin.save(update_fields=['password'])
-        UsuarioRol.objects.get_or_create(idusuario=admin, idrol=self._rol_admin)
-        self._log('', 'Usuario', f'{admin.usuario} (Admin)')
-
-        sup, _ = Usuario.objects.update_or_create(
-            usuario=f'supervisor{suffix}',
-            defaults={
-                'correo': f'supervisor{suffix}@sipro.com',
-                'nombres': f'Supervisor {idx + 1}',
-                'apellidos': 'Empresa',
-                'idempresa': empresa,
-                'tipo_usuario': 'admin_empresa',
-            },
-        )
-        sup.set_password('demo1234')
-        sup.save(update_fields=['password'])
-        UsuarioRol.objects.get_or_create(idusuario=sup, idrol=self._rol_supervisor)
-        self._log('', 'Usuario', f'{sup.usuario} (Supervisor)')
-
-        op, _ = Usuario.objects.update_or_create(
-            usuario=f'operario{suffix}',
-            defaults={
-                'correo': f'operario{suffix}@sipro.com',
-                'nombres': f'Operario {idx + 1}',
-                'apellidos': 'Almacén',
-                'idempresa': empresa,
-                'tipo_usuario': 'operador',
-            },
-        )
-        op.set_password('demo1234')
-        op.save(update_fields=['password'])
-        UsuarioRol.objects.get_or_create(idusuario=op, idrol=self._rol_operario)
-        self._log('', 'Usuario', f'{op.usuario} (Operario)')
-
-        self._admin = admin
-        self._supervisor = sup
-        self._operario = op
+        return sucursales, almacenes
 
     def _seed_layout(self, sucursal, almacen, idx):
         self._section(f'    Layout — {sucursal.nombre}')
         offset_x = idx * 50
         offset_y = idx * 30
 
-        # ── Zonas externas (a nivel sucursal) ──────────────────────────────
         zona_recepcion, _ = Zona.objects.get_or_create(
             idsucursal=sucursal,
             codigo=f'Z-REC-E{idx+1}',
@@ -360,7 +421,6 @@ class Command(BaseCommand):
         )
         self._log('', 'Zonas externas (sucursal)', 2)
 
-        # ── Zonas internas (dentro del almacén) ────────────────────────────
         zona_alm_a, _ = Zona.objects.get_or_create(
             idalmacen=almacen,
             codigo=f'Z-ALMA-E{idx+1}',
@@ -405,7 +465,6 @@ class Command(BaseCommand):
         )
         self._log('', 'Zonas internas (almacén)', 3)
 
-        # ── Estantes (dentro de zonas internas de almacenamiento) ──────────
         estantes = []
         for codigo, nombre, zona, x, y, rot in [
             ('E01', 'Estante A1', zona_alm_a, 50, 50, 0),
@@ -428,7 +487,6 @@ class Command(BaseCommand):
             estantes.append(e)
         self._log('', 'Estantes', len(estantes))
 
-        # ── Niveles y Ubicaciones ──────────────────────────────────────────
         niveles = []
         for estante in estantes:
             for k in range(1, 4):
@@ -453,7 +511,6 @@ class Command(BaseCommand):
         self._log('', 'Ubicaciones', len(ubicaciones))
         self._ubicaciones = ubicaciones
 
-        # ── Nodos externos (a nivel sucursal) ──────────────────────────────
         bx, by = offset_x, offset_y
         nodos_ext = []
         for nombre, tipo, cx, cy in [
@@ -470,7 +527,6 @@ class Command(BaseCommand):
             nodos_ext.append(n)
         self._log('', 'Nodos externos (sucursal)', len(nodos_ext))
 
-        # ── Nodos internos (dentro del almacén) ────────────────────────────
         nodos_int = []
         for nombre, tipo, cx, cy, ubic in [
             ('N-Entrada-Almacen', 'entrada', bx + 20, by + 295, None),
@@ -488,41 +544,32 @@ class Command(BaseCommand):
             nodos_int.append(n)
         self._log('', 'Nodos internos (almacén)', len(nodos_int))
 
-        # ── Conexiones ─────────────────────────────────────────────────────
         all_nodos = nodos_ext + nodos_int
-        # Mapear índices de conexion: [0-3] externos, [4-9] internos
         conexiones_data = [
-            # Conexiones externas (entre nodos de sucursal)
-            (0, 1, 200, 400, 'acceso'),       # Puerta Principal → Puerta Recepcion
-            (0, 2, 850, 400, 'acceso'),       # Puerta Principal → Puerta Despacho
-            (2, 3, 100, 350, 'acceso'),       # Puerta Despacho → Salida Exterior
-
-            # Conexiones que cruzan niveles (externo ↔ interno)
-            (1, 4, 80, 350, 'acceso'),        # Puerta Recepcion → Entrada Almacen
-
-            # Conexiones internas (dentro del almacén)
-            (4, 5, 180, 350, 'pasillo'),      # Entrada Almacen → Int Central
-            (5, 6, 130, 350, 'pasillo'),      # Int Central → Pick A1
-            (5, 7, 280, 350, 'pasillo'),      # Int Central → Pick A2
-            (5, 8, 700, 300, 'cruce'),        # Int Central → Pick B1
-            (5, 9, 850, 300, 'cruce'),        # Int Central → Pick B2
-            (6, 7, 150, 250, 'pasillo'),      # Pick A1 → Pick A2
-            (8, 9, 150, 250, 'pasillo'),      # Pick B1 → Pick B2
+            (0, 1, 200, 400, 'acceso'),
+            (0, 2, 850, 400, 'acceso'),
+            (2, 3, 100, 350, 'acceso'),
+            (1, 4, 80, 350, 'acceso'),
+            (4, 5, 180, 350, 'pasillo'),
+            (5, 6, 130, 350, 'pasillo'),
+            (5, 7, 280, 350, 'pasillo'),
+            (5, 8, 700, 300, 'cruce'),
+            (5, 9, 850, 300, 'cruce'),
+            (6, 7, 150, 250, 'pasillo'),
+            (8, 9, 150, 250, 'pasillo'),
         ]
         for oi, di, dist, ancho, tipo in conexiones_data:
             Conexion.objects.get_or_create(
                 idnodoorigen=all_nodos[oi], idnododestino=all_nodos[di],
                 defaults={'distancia': dist, 'ancho': ancho, 'tipo': tipo, 'geometria': {'type': 'line'}},
             )
-            # bidireccional
             Conexion.objects.get_or_create(
                 idnododestino=all_nodos[oi], idnodoorigen=all_nodos[di],
                 defaults={'distancia': dist, 'ancho': ancho, 'tipo': tipo, 'geometria': {'type': 'line'}},
             )
         self._log('', 'Conexiones', len(conexiones_data) * 2)
 
-    def _seed_global_kardex(self):
-        self._section(' Kardex')
+    def _seed_kardex_tenant(self):
         inventarios = Inventario.objects.select_related('idproducto', 'idubicacion', 'idlote').all()
         count = 0
         for inv in inventarios:
@@ -657,7 +704,6 @@ class Command(BaseCommand):
                     )
             self._log('', 'Orden', f'{op.numero_orden} ({estado_map[pick_num]})')
 
-            # Seed incidencia on orden 2 (en_proceso)
             if pick_num == 2:
                 detalle = DetallePicking.objects.filter(idorden=op).first()
                 if detalle:
@@ -688,7 +734,6 @@ class Command(BaseCommand):
             )
             self._log('', 'Transferencia', f'{t.numero_transferencia} ({estado})')
 
-            # Seed DetalleTransferencia
             det_skus = ['SKU-006', 'SKU-015', 'SKU-018'] if trf_num == 1 else ['SKU-011', 'SKU-013']
             for d_idx, sku in enumerate(det_skus):
                 if sku in productos:
@@ -710,25 +755,31 @@ class Command(BaseCommand):
         self.stdout.write('=' * 60)
         self.stdout.write('  RESUMEN DE CARGA')
         self.stdout.write('=' * 60)
-        for nombre, modelo in [
-            ('Empresas', Empresa), ('Sucursales', Sucursal), ('Almacenes', Almacen),
-            ('Permisos', Permiso), ('Roles', Rol), ('Usuarios', Usuario),
-            ('Zonas', Zona), ('Estantes', Estante), ('Niveles', Nivel),
-            ('Ubicaciones', Ubicacion), ('Nodos', Nodo), ('Conexiones', Conexion),
-            ('Categorías', Categoria), ('Productos', Producto), ('Lotes', Lote),
-            ('Inventario', Inventario), ('Kardex', Kardex),
-            ('Órdenes Picking', OrdenPicking), ('Incidencias', Incidencia),
-            ('Transferencias', Transferencia), ('Detalles Transferencia', DetalleTransferencia),
-        ]:
-            count = modelo.objects.count()
-            self.stdout.write(f'  {"" if count > 0 else ""} {nombre}: {count}')
+
+        self.stdout.write(f'  Portal (public):')
+        self.stdout.write(f'    Empresas: {Empresa.objects.count()}')
+        self.stdout.write(f'    Usuarios: {Usuario.objects.filter(tipo_usuario="admin_sistema").count()}')
+        self.stdout.write(f'    Permisos: {Permiso.objects.count()}')
+
+        for empresa in Empresa.objects.all():
+            with tenant_schema(str(empresa.idempresa)):
+                self.stdout.write(f'  Tenant {empresa.razonsocial}:')
+                self.stdout.write(f'    Usuarios: {Usuario.objects.count()}')
+                self.stdout.write(f'    Roles: {Rol.objects.count()}')
+                self.stdout.write(f'    Permisos: {Permiso.objects.count()}')
+                self.stdout.write(f'    Sucursales: {Sucursal.objects.count()}')
+                self.stdout.write(f'    Almacenes: {Almacen.objects.count()}')
+                self.stdout.write(f'    Productos: {Producto.objects.count()}')
+                self.stdout.write(f'    Kardex: {Kardex.objects.count()}')
+
         self.stdout.write('')
         self.stdout.write('   Credenciales de acceso:')
         self.stdout.write('  ')
-        self.stdout.write('  admin / admin1234 (Super Admin)')
+        self.stdout.write('  admin / admin1234 (Super Admin - Portal)')
         for i in range(len(EMPRESAS_DATA)):
             suffix = '' if i == 0 else str(i + 1)
-            self.stdout.write(f'  supervisor{suffix} / demo1234')
-            self.stdout.write(f'  operario{suffix} / demo1234')
+            self.stdout.write(f'  admin{suffix} / admin1234 (Admin Empresa {i+1})')
+            self.stdout.write(f'  supervisor{suffix} / demo1234 (Supervisor Empresa {i+1})')
+            self.stdout.write(f'  operario{suffix} / demo1234 (Operario Empresa {i+1})')
         self.stdout.write('')
         self.stdout.write('=' * 60)

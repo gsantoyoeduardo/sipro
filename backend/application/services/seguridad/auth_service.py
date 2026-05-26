@@ -38,35 +38,69 @@ class AuthService:
     def tenant_login(ruc: str, usuario: str, password: str, ip: str, user_agent: str):
         from infrastructure.models.empresa_model import Empresa
         from infrastructure.models.seguridad_model import Usuario as UsuarioModel
+        from django.db import connection
 
         empresa = Empresa.objects.filter(ruc=ruc, estado=True).first()
         if not empresa:
             logger.warning(f"Tenant login fallido - empresa no encontrada ruc={ruc}, usuario={usuario}, ip={ip}")
             return {'error': 'Credenciales inválidas'}
 
-        user = authenticate(usuario=usuario, password=password)
-        if not user or not user.estado or user.idempresa_id != empresa.idempresa:
-            logger.warning(f"Tenant login fallido - usuario={usuario}, ruc={ruc}, ip={ip}")
-            return {'error': 'Credenciales inválidas'}
+        schema = f'empresa_{str(empresa.idempresa).replace("-", "_")}'
+        with connection.cursor() as cursor:
+            cursor.execute(f'SET search_path = "{schema}", public')
 
-        if user.tipo_usuario not in ('admin_empresa', 'operador'):
-            logger.warning(f"Tenant login denegado por tipo_usuario - usuario={usuario}, tipo={user.tipo_usuario}, ip={ip}")
-            return {'error': 'Acceso denegado.'}
+        try:
+            user = authenticate(usuario=usuario, password=password)
+            if not user or not user.estado or user.idempresa_id != empresa.idempresa:
+                logger.warning(f"Tenant login fallido - usuario={usuario}, ruc={ruc}, ip={ip}")
+                return {'error': 'Credenciales inválidas'}
 
-        return AuthService._create_session(user, ip, user_agent, {
-            'aud': 'tenant',
-            'idempresa': str(empresa.idempresa),
-            'tipo_usuario': user.tipo_usuario,
-        })
+            if user.tipo_usuario not in ('admin_empresa', 'operador'):
+                logger.warning(f"Tenant login denegado por tipo_usuario - usuario={usuario}, tipo={user.tipo_usuario}, ip={ip}")
+                return {'error': 'Acceso denegado.'}
+
+            return AuthService._create_session(user, ip, user_agent, {
+                'aud': 'tenant',
+                'idempresa': str(empresa.idempresa),
+                'tipo_usuario': user.tipo_usuario,
+            })
+        finally:
+            with connection.cursor() as cursor:
+                cursor.execute('SET search_path = public')
 
     @staticmethod
     def _create_session(user, ip: str, user_agent: str, extra_claims: dict | None = None):
-        refresh = RefreshToken.for_user(user)
+        import uuid
+        from datetime import datetime, timedelta
+        from django.conf import settings
+        from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+        from rest_framework_simplejwt.settings import api_settings
+        from django.db import connection
+
+        now = datetime.utcnow()
+        refresh_exp = now + timedelta(seconds=api_settings.REFRESH_TOKEN_LIFETIME.total_seconds())
+        access_exp = now + timedelta(seconds=api_settings.ACCESS_TOKEN_LIFETIME.total_seconds())
+
+        refresh_token = RefreshToken()
+        refresh_token['user_id'] = str(user.idusuario)
+        refresh_token['token_type'] = 'refresh'
+        refresh_token['exp'] = refresh_exp
+        refresh_token['jti'] = str(uuid.uuid4())
         if extra_claims:
             for key, value in extra_claims.items():
-                refresh[key] = value
-        access_token = str(refresh.access_token)
-        refresh_token = str(refresh)
+                refresh_token[key] = value
+
+        access_token = AccessToken()
+        access_token['user_id'] = str(user.idusuario)
+        access_token['token_type'] = 'access'
+        access_token['exp'] = access_exp
+        access_token['jti'] = str(uuid.uuid4())
+        if extra_claims:
+            for key, value in extra_claims.items():
+                access_token[key] = value
+
+        refresh_str = str(refresh_token)
+        access_str = str(access_token)
 
         dispositivo = user_agent[:255] if user_agent else None
         navegador = 'Desconocido'
@@ -81,9 +115,9 @@ class AuthService:
 
         sesion_repo.create({
             'idusuario': user,
-            'tokenjwt': access_token,
-            'refreshtoken': refresh_token,
-            'token_hash': hashlib.sha256(refresh_token.encode()).hexdigest(),
+            'tokenjwt': access_str,
+            'refreshtoken': refresh_str,
+            'token_hash': hashlib.sha256(refresh_str.encode()).hexdigest(),
             'ip': ip,
             'dispositivo': dispositivo,
             'navegador': navegador,
@@ -97,8 +131,8 @@ class AuthService:
 
         return {
             'user': UsuarioSerializer(user).data,
-            'access': access_token,
-            'refresh': refresh_token,
+            'access': access_str,
+            'refresh': refresh_str,
         }
 
     @staticmethod
@@ -132,7 +166,9 @@ class AuthService:
 class UsuarioService:
     @staticmethod
     def listar(idempresa: uuid.UUID | None = None):
-        return usuario_repo.get_all(idempresa=idempresa)
+        if idempresa:
+            return usuario_repo.get_all(idempresa=idempresa)
+        return usuario_repo.get_all()
 
     @staticmethod
     def obtener(idusuario: uuid.UUID):
@@ -170,7 +206,9 @@ class UsuarioService:
 class RolService:
     @staticmethod
     def listar(idempresa: uuid.UUID | None = None):
-        return rol_repo.get_all(idempresa=idempresa)
+        if idempresa:
+            return rol_repo.get_all(idempresa=idempresa)
+        return rol_repo.get_all()
 
     @staticmethod
     def obtener(idrol: uuid.UUID):

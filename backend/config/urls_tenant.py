@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import path, include
-from rest_framework_simplejwt.views import TokenRefreshView
+from tenant.auth.views import tenant_refresh_view
 
 
 def root_redirect(request):
@@ -12,7 +12,7 @@ urlpatterns = [
     path('', root_redirect),
     path('admin/', admin.site.urls),
     path('tenant/', include('tenant.urls')),
-    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/refresh/', tenant_refresh_view, name='token_refresh'),
 ]
 
 try:

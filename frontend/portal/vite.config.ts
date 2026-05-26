@@ -7,8 +7,12 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/portal': 'http://localhost:8000',
       '/auth': 'http://localhost:8000',
+      '/empresa': 'http://localhost:8000',
+      '/auditorias': 'http://localhost:8000',
+      '/permisos': 'http://localhost:8000',
+      '/roles': 'http://localhost:8000',
+      '/usuarios': 'http://localhost:8000',
     },
   },
 })

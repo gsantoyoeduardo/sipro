@@ -105,7 +105,7 @@ AUTH_USER_MODEL = 'seguridad.Usuario'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'infrastructure.auth.jwt_auth.TenantJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
@@ -155,8 +155,8 @@ REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = [
     'rest_framework.throttling.UserRateThrottle',
 ]
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
-    'anon': '1000/hour',
-    'user': '5000/hour',
+    'anon': '100000/hour',
+    'user': '500000/hour',
 }
 
 CSRF_TRUSTED_ORIGINS = [origin for origin in config('CSRF_TRUSTED_ORIGINS', default='http://localhost:8080,http://localhost:8081,http://127.0.0.1:8080,http://127.0.0.1:8081').split(',') if origin]
@@ -235,7 +235,3 @@ LOGGING = {
         },
     },
 }
-
-REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
-    'rest_framework_simplejwt.authentication.JWTAuthentication',
-)

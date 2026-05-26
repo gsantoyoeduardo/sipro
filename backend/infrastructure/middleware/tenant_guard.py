@@ -18,6 +18,9 @@ class TenantGuardMiddleware:
         if not any(path.startswith(prefix) for prefix in self.TENANT_PREFIXES):
             return self.get_response(request)
 
+        if request.META.get('HTTP_AUTHORIZATION', '').startswith('Bearer '):
+            return self.get_response(request)
+
         if not hasattr(request, 'user') or not request.user.is_authenticated:
             return JsonResponse(
                 {'error': 'Autenticación requerida para el tenant'},

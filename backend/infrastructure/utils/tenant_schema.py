@@ -10,7 +10,7 @@ class tenant_schema:
         eid = str(empresa_id)
         if not UUID_PATTERN.match(eid):
             raise ValueError(f"Invalid tenant ID: {eid}")
-        self.schema = f"empresa_{eid}"
+        self.schema = f"empresa_{eid}".replace('-', '_')
 
     def __enter__(self):
         with connection.cursor() as c:

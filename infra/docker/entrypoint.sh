@@ -9,7 +9,7 @@ python manage.py collectstatic --noinput
 
 if [ "$LOAD_DEMO" = "true" ]; then
     echo "==> Cargando datos demo..."
-    python manage.py seed_demo
+    python manage.py seed_demo --reset
 fi
 
 echo "==> Iniciando servidor..."

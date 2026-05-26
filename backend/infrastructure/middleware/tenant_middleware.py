@@ -16,9 +16,9 @@ class TenantMiddleware:
 
     ¿Cómo funciona?
     1. Antes de cada request, lee el idempresa del usuario autenticado
-    2. Ejecuta SET search_path = 'empresa_{id}', public, auditoria
+    2. Ejecuta SET search_path = 'empresa_{id}', public
     3. Todas las queries de Django durante este request van al schema correcto
-    4. Al finalizar, restaura: SET search_path = public, auditoria
+    4. Al finalizar, restaura: SET search_path = public
 
     Esto permite que múltiples empresas compartan la misma base de datos
     sin que sus datos se mezclen (multi-tenant schema-based).
@@ -41,7 +41,7 @@ class TenantMiddleware:
             request.idempresa = None
 
         with connection.cursor() as cursor:
-            cursor.execute(f'SET search_path = "{schema}", public, auditoria')
+            cursor.execute(f'SET search_path = "{schema}", public')
 
         _local.current_tenant = schema
 
@@ -49,7 +49,7 @@ class TenantMiddleware:
             response = self.get_response(request)
         finally:
             with connection.cursor() as cursor:
-                cursor.execute('SET search_path = public, auditoria')
+                cursor.execute('SET search_path = public')
             _local.current_tenant = 'public'
 
         return response
@@ -61,10 +61,10 @@ def set_tenant_schema(schema_name):
     if not schema_name.startswith('empresa_') and schema_name not in ('public',):
         raise ValueError(f"Schema name not allowed: {schema_name}")
     with connection.cursor() as cursor:
-        cursor.execute(f'SET search_path = "{schema_name}", public, auditoria')
+        cursor.execute(f'SET search_path = "{schema_name}", public')
     _local.current_tenant = schema_name
 
 def reset_tenant_schema():
     with connection.cursor() as cursor:
-        cursor.execute('SET search_path = public, auditoria')
+        cursor.execute('SET search_path = public')
     _local.current_tenant = 'public'

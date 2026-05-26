@@ -1,12 +1,16 @@
+from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
 from application.services.seguridad.auth_service import AuthService
 from django.core.cache import cache
+from django.db import connection
 from drf_spectacular.utils import extend_schema, OpenApiExample
-from application.dto.auth_dto import TenantLoginSerializer, LogoutSerializer, ChangePasswordSerializer
+from application.dto.auth_dto import TenantLoginSerializer, LogoutSerializer, ChangePasswordSerializer, RefreshTokenSerializer
 
 LOGIN_LIMIT_CACHE_PREFIX = 'login_attempt_'
 
@@ -40,7 +44,7 @@ def _reset_login_rate_limit(ip):
 def tenant_login_view(request):
     ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
     if ip and ',' in ip: ip = ip.split(',')[0].strip()
-    if not _check_login_rate_limit(ip):
+    if not settings.DEBUG and not _check_login_rate_limit(ip):
         return Response({'error': 'Demasiados intentos. Intente en 5 minutos.'},
                         status=status.HTTP_429_TOO_MANY_REQUESTS)
     ruc = request.data.get('ruc')
@@ -73,6 +77,32 @@ def tenant_logout_view(request):
         return Response({'error': 'Refresh token es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
     result = AuthService.logout(refresh_token, request.user)
     return Response(result)
+
+
+@extend_schema(
+    request=RefreshTokenSerializer,
+    responses={200: None, 400: None, 401: None},
+    description="Refresca el token de acceso usando un refresh token válido.",
+    examples=[
+        OpenApiExample('Refresh exitoso', value={'refresh': 'token_jwt_de_refresco'}, request_only=True),
+    ],
+)
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def tenant_refresh_view(request):
+    with connection.cursor() as cursor:
+        cursor.execute('SET search_path = public')
+    refresh_token = request.data.get('refresh')
+    if not refresh_token:
+        return Response({'error': 'Refresh token es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        token = RefreshToken(refresh_token)
+        token.check_blacklist()
+        new_access = str(token.access_token)
+        return Response({'access': new_access})
+    except Exception as e:
+        return Response({'error': 'Token inválido o expirado'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @extend_schema(

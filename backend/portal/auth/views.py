@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -40,7 +41,7 @@ def _reset_login_rate_limit(ip):
 def portal_login_view(request):
     ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
     if ip and ',' in ip: ip = ip.split(',')[0].strip()
-    if not _check_login_rate_limit(ip):
+    if not settings.DEBUG and not _check_login_rate_limit(ip):
         return Response({'error': 'Demasiados intentos. Intente en 5 minutos.'},
                         status=status.HTTP_429_TOO_MANY_REQUESTS)
     usuario = request.data.get('usuario')

@@ -34,6 +34,7 @@ class BaseAuditoriaViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminUser]
     audit_model = None
     serializer_class = AuditoriaSerializer
+    tabla_nombre = ''
 
     def get_queryset(self):
         idempresa = self.kwargs.get('idempresa')
@@ -59,6 +60,7 @@ class BaseAuditoriaViewSet(viewsets.ReadOnlyModelViewSet):
             {
                 'idauditoria': str(r.idauditoria),
                 'idregistro': str(r.idregistro),
+                'tabla': self.tabla_nombre,
                 'idusuario': str(r.idusuario) if r.idusuario else None,
                 'tipooperacion': r.tipooperacion,
                 'datosanteriores': r.datosanteriores,
@@ -74,100 +76,124 @@ class BaseAuditoriaViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AuditoriaEmpresaViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaEmpresa
+    tabla_nombre = 'Empresa'
 
 
 class AuditoriaSucursalViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaSucursal
+    tabla_nombre = 'Sucursal'
 
 
 class AuditoriaAlmacenViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaAlmacen
+    tabla_nombre = 'Almacen'
 
 
 class AuditoriaUsuarioViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaUsuario
+    tabla_nombre = 'Usuario'
 
 
 class AuditoriaRolViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaRol
+    tabla_nombre = 'Rol'
 
 
 class AuditoriaPermisoViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaPermiso
+    tabla_nombre = 'Permiso'
 
 
 class AuditoriaUsuarioRolViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaUsuarioRol
+    tabla_nombre = 'UsuarioRol'
 
 
 class AuditoriaRolPermisoViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaRolPermiso
+    tabla_nombre = 'RolPermiso'
 
 
 class AuditoriaSesionUsuarioViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaSesionUsuario
+    tabla_nombre = 'Sesion'
 
 
 class AuditoriaCategoriaViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaCategoria
+    tabla_nombre = 'Categoria'
 
 
 class AuditoriaProductoViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaProducto
+    tabla_nombre = 'Producto'
 
 
 class AuditoriaLoteViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaLote
+    tabla_nombre = 'Lote'
 
 
 class AuditoriaInventarioViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaInventario
+    tabla_nombre = 'Inventario'
 
 
 class AuditoriaKardexViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaKardex
+    tabla_nombre = 'Kardex'
 
 
 class AuditoriaZonaViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaZona
-
+    tabla_nombre = 'Zona'
 
 
 class AuditoriaEstanteViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaEstante
+    tabla_nombre = 'Estante'
 
 
 class AuditoriaNivelViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaNivel
+    tabla_nombre = 'Nivel'
 
 
 class AuditoriaUbicacionViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaUbicacion
+    tabla_nombre = 'Ubicacion'
 
 
 class AuditoriaNodoViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaNodo
+    tabla_nombre = 'Nodo'
 
 
 class AuditoriaConexionViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaConexion
+    tabla_nombre = 'Conexion'
 
 
 class AuditoriaOrdenPickingViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaOrdenPicking
+    tabla_nombre = 'OrdenPicking'
 
 
 class AuditoriaDetallePickingViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaDetallePicking
+    tabla_nombre = 'DetallePicking'
 
 
 class AuditoriaIncidenciaViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaIncidencia
+    tabla_nombre = 'Incidencia'
 
 
 class AuditoriaTransferenciaViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaTransferencia
+    tabla_nombre = 'Transferencia'
 
 
 class AuditoriaDetalleTransferenciaViewSet(BaseAuditoriaViewSet):
     audit_model = AuditoriaDetalleTransferencia
+    tabla_nombre = 'DetalleTransferencia'

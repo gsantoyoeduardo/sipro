@@ -1,189 +1,163 @@
 import uuid
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiExample
+from application.dto.portal.registro_dto import CrearEmpresaSerializer
 from application.dto.empresa.empresa_dto import EmpresaSerializer, EmpresaListSerializer
-from application.dto.empresa.sucursal_dto import SucursalSerializer, SucursalListSerializer
-from application.dto.empresa.almacen_dto import AlmacenSerializer
-from application.dto.shared_dto import ToggleEstadoSerializer
-from application.services.empresa.empresa_service import EmpresaService, SucursalService, AlmacenService
-from application.filters.empresa.empresa_filter import EmpresaFilter
-from application.filters.empresa.sucursal_filter import SucursalFilter
-from application.filters.empresa.almacen_filter import AlmacenFilter
+from application.services.portal.empresa_registration_service import EmpresaRegistrationService
+from application.services.empresa.empresa_service import EmpresaService
+from infrastructure.models.empresa_model import Empresa
+from infrastructure.utils.tenant_schema import tenant_schema
 
 
-@extend_schema_view(
-    create=extend_schema(examples=[
-        OpenApiExample('Empresa correcta', value={'razonsocial': 'Nueva Empresa S.A.C.', 'nombrecomercial': 'Nueva Empresa', 'ruc': '20123456789', 'correo': 'contacto@nueva.pe', 'telefono': '01-555-0100', 'direccion': 'Av. Principal 123'}, request_only=True),
-        OpenApiExample('RUC inválido', value={'razonsocial': 'Test', 'ruc': '123'}, request_only=True),
-    ]),
-    update=extend_schema(examples=[
-        OpenApiExample('Actualización correcta', value={'razonsocial': 'Editada S.A.C.', 'nombrecomercial': 'Editada'}, request_only=True),
-        OpenApiExample('Correo inválido', value={'correo': 'correo-invalido'}, request_only=True),
-    ]),
-    partial_update=extend_schema(examples=[
-        OpenApiExample('Cambio de estado', value={'estado': False}, request_only=True),
-    ]),
+@extend_schema(
+    request=CrearEmpresaSerializer,
+    responses={201: None, 400: None},
+    description="Crea una nueva empresa con su administrador y schema de base de datos.",
+    examples=[
+        OpenApiExample('Registro completo', value={
+            'razonsocial': 'Nueva Empresa S.A.C.', 'nombrecomercial': 'Nueva Empresa', 'ruc': '20123456789',
+            'correo': 'contacto@nuevaempresa.pe', 'telefono': '01-555-0000', 'direccion': 'Av. Empresarial 456',
+            'admin_usuario': 'admin_nuevo', 'admin_nombres': 'Admin Nuevo',
+            'admin_correo': 'admin@nuevaempresa.pe', 'admin_password': 'segura123',
+        }, request_only=True),
+        OpenApiExample('Faltan campos requeridos', value={'razonsocial': 'Incompleta'}, request_only=True),
+    ],
 )
-class EmpresaViewSet(viewsets.ModelViewSet):
-    """CRUD de empresas clientes del sistema. Solo administradores del portal."""
-    swagger_tags = 'Empresas'
-    portal_only = True
-    queryset = EmpresaService.listar()
-    serializer_class = EmpresaSerializer
-    filterset_class = EmpresaFilter
-    permission_classes = [permissions.IsAdminUser]
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def crear_empresa(request):
+    data = request.data
+    errors = {}
+    if not data.get('razonsocial'):
+        errors['razonsocial'] = 'La razón social es obligatoria'
+    if not data.get('ruc'):
+        errors['ruc'] = 'El RUC es obligatorio'
+    if not data.get('correo'):
+        errors['correo'] = 'El correo empresarial es obligatorio'
+    if not data.get('admin_password'):
+        errors['admin_password'] = 'La contraseña del administrador es obligatoria'
+    elif len(data['admin_password']) < 8:
+        errors['admin_password'] = 'La contraseña debe tener al menos 8 caracteres'
+    if not data.get('admin_usuario'):
+        errors['admin_usuario'] = 'El nombre de usuario administrador es obligatorio'
+    if not data.get('admin_nombres'):
+        errors['admin_nombres'] = 'Los nombres del administrador son obligatorios'
+    if not data.get('admin_correo'):
+        errors['admin_correo'] = 'El correo del administrador es obligatorio'
 
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return EmpresaListSerializer
-        return EmpresaSerializer
+    if errors:
+        return Response({'error': 'Datos inválidos', 'fields': errors}, status=status.HTTP_400_BAD_REQUEST)
 
-    def get_queryset(self):
-        return EmpresaService.listar()
+    service_data = {
+        **data,
+        'password': data['admin_password'],
+        'usuario': data['admin_usuario'],
+        'nombres': data['admin_nombres'],
+        'apellidos': data.get('admin_apellidos', ''),
+        'usuario_correo': data['admin_correo'],
+    }
 
-    def perform_create(self, serializer):
-        serializer.save()
+    result = EmpresaRegistrationService.registrar_empresa(service_data)
+    return Response({
+        'mensaje': 'Empresa creada exitosamente',
+        'empresa': result['empresa'],
+        'admin': result['admin'],
+        'schema': result['schema'],
+    }, status=status.HTTP_201_CREATED)
 
-    def perform_update(self, serializer):
-        serializer.save()
 
-    def perform_destroy(self, instance):
-        instance.delete()
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def listar_empresas(request):
+    empresas = EmpresaService.listar()
+    page = request.query_params.get('page', 1)
+    page_size = request.query_params.get('page_size', 20)
+    serializer = EmpresaListSerializer(empresas, many=True)
+    return Response({'results': serializer.data})
 
-    @extend_schema(
-        request=ToggleEstadoSerializer,
-        examples=[
-            OpenApiExample('Desactivar', value={'activo': False}, request_only=True),
-            OpenApiExample('Activar', value={'activo': True}, request_only=True),
-        ],
-    )
-    @action(detail=True, methods=['patch'], url_path='estado', serializer_class=ToggleEstadoSerializer)
-    def toggle_estado(self, request, pk=None):
-        empresa = self.get_object()
-        nuevo_estado = request.data.get('activo', not empresa.estado)
-        empresa.estado = nuevo_estado
-        empresa.save(update_fields=['estado'])
-        return Response({'estado': empresa.estado})
 
-    @action(detail=True, methods=['get'], url_path='sucursales')
-    def listar_sucursales(self, request, pk=None):
-        """Retorna las sucursales de una empresa."""
-        sucursales = SucursalService.listar(idempresa=uuid.UUID(pk))
-        serializer = SucursalListSerializer(sucursales, many=True)
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def detalle_empresa(request, idempresa):
+    from infrastructure.models.seguridad_model import Usuario
+    empresa = Empresa.objects.get(pk=idempresa)
+    total_usuarios = Usuario.objects.filter(idempresa_id=idempresa).count()
+    admin = Usuario.objects.filter(idempresa_id=idempresa, tipo_usuario='admin_empresa').first()
+    return Response({
+        'empresa': EmpresaSerializer(empresa).data,
+        'total_usuarios': total_usuarios,
+        'admin_usuario': admin.usuario if admin else None,
+    })
+
+
+@api_view(['PUT'])
+@permission_classes([IsAdminUser])
+def editar_empresa(request, idempresa):
+    empresa = Empresa.objects.get(pk=idempresa)
+    serializer = EmpresaSerializer(empresa, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response({'mensaje': 'Empresa actualizada exitosamente', 'empresa': serializer.data})
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def desactivar_empresa(request, idempresa):
+    empresa = Empresa.objects.get(pk=idempresa)
+    empresa.estado = not empresa.estado
+    empresa.save(update_fields=['estado'])
+    return Response({'estado': empresa.estado})
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def listar_usuarios_empresa(request, idempresa):
+    from infrastructure.models.seguridad_model import Usuario
+    from application.dto.seguridad.usuario_dto import UsuarioListSerializer
+    with tenant_schema(idempresa):
+        usuarios = Usuario.objects.all().order_by('-fechacreacion')
+        serializer = UsuarioListSerializer(usuarios, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], url_path='sucursales', serializer_class=SucursalSerializer)
-    def create_sucursal(self, request, pk=None):
-        """Crea una nueva sucursal para una empresa."""
-        data = request.data.copy()
-        serializer = SucursalSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(idempresa_id=pk)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+@api_view(['PUT'])
+@permission_classes([IsAdminUser])
+def editar_usuario_empresa(request, idempresa, userId):
+    from infrastructure.models.seguridad_model import Usuario
+    from application.dto.seguridad.usuario_dto import UsuarioSerializer
+    from infrastructure.repositories.seguridad_repo import UsuarioRepository
+    with tenant_schema(idempresa):
+        usuario = Usuario.objects.get(pk=userId)
+        repo = UsuarioRepository()
+        repo.update(userId, request.data)
+        return Response({'mensaje': 'Usuario actualizado exitosamente'})
 
 
-@extend_schema_view(
-    create=extend_schema(examples=[
-        OpenApiExample('Sucursal correcta', value={'nombre': 'Sede Norte', 'codigo': 'SEDE007', 'direccion': 'Av. Industrial 500', 'telefono': '01-555-0700'}, request_only=True),
-        OpenApiExample('Código vacío', value={'nombre': 'Test', 'codigo': ''}, request_only=True),
-    ]),
-    update=extend_schema(examples=[
-        OpenApiExample('Actualización correcta', value={'nombre': 'Sede Norte Editada'}, request_only=True),
-    ]),
-    partial_update=extend_schema(examples=[
-        OpenApiExample('Cambio de estado', value={'estado': False}, request_only=True),
-    ]),
-)
-class SucursalViewSet(viewsets.ModelViewSet):
-    """CRUD de sucursales de una empresa."""
-    portal_only = True
-    swagger_tags = 'Sucursales'
-    queryset = SucursalService.listar()
-    serializer_class = SucursalSerializer
-    filterset_class = SucursalFilter
-
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return SucursalListSerializer
-        return SucursalSerializer
-
-    def get_queryset(self):
-        idempresa = self.request.query_params.get('idempresa')
-        return SucursalService.listar(idempresa=uuid.UUID(idempresa) if idempresa else None)
-
-    def perform_destroy(self, instance):
-        instance.delete()
-
-    @extend_schema(
-        request=ToggleEstadoSerializer,
-        examples=[
-            OpenApiExample('Desactivar', value={'activo': False}, request_only=True),
-            OpenApiExample('Activar', value={'activo': True}, request_only=True),
-        ],
-    )
-    @action(detail=True, methods=['patch'], url_path='estado', serializer_class=ToggleEstadoSerializer)
-    def toggle_estado(self, request, pk=None):
-        sucursal = self.get_object()
-        sucursal.estado = request.data.get('activo', not sucursal.estado)
-        sucursal.save(update_fields=['estado'])
-        return Response({'estado': sucursal.estado})
-
-    @action(detail=True, methods=['get'], url_path='almacenes')
-    def listar_almacenes(self, request, pk=None):
-        """Retorna los almacenes de una sucursal."""
-        almacenes = AlmacenService.listar(idsucursal=uuid.UUID(pk))
-        serializer = AlmacenSerializer(almacenes, many=True)
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def sesiones_empresa(request, idempresa):
+    from infrastructure.models.seguridad_model import SesionUsuario
+    from application.dto.seguridad.sesion_dto import SesionUsuarioSerializer
+    with tenant_schema(idempresa):
+        sesiones = SesionUsuario.objects.filter(activa=True).order_by('-fechainicio')
+        serializer = SesionUsuarioSerializer(sesiones, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], url_path='almacenes', serializer_class=AlmacenSerializer)
-    def create_almacen(self, request, pk=None):
-        """Crea un nuevo almacén para una sucursal."""
-        data = request.data.copy()
-        serializer = AlmacenSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(idsucursal_id=pk)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-@extend_schema_view(
-    create=extend_schema(examples=[
-        OpenApiExample('Almacén correcto', value={'nombre': 'Almacén Norte', 'codigo': 'ALM007', 'descripcion': 'Almacén principal', 'capacidadmaxima': 10000}, request_only=True),
-        OpenApiExample('Capacidad inválida', value={'nombre': 'Test', 'capacidadmaxima': -1}, request_only=True),
-    ]),
-    update=extend_schema(examples=[
-        OpenApiExample('Actualización correcta', value={'nombre': 'Almacén Norte Editado'}, request_only=True),
-    ]),
-    partial_update=extend_schema(examples=[
-        OpenApiExample('Cambio de nombre', value={'nombre': 'Nuevo nombre'}, request_only=True),
-    ]),
-)
-class AlmacenViewSet(viewsets.ModelViewSet):
-    """CRUD de almacenes de una sucursal."""
-    portal_only = True
-    swagger_tags = 'Almacenes'
-    queryset = AlmacenService.listar()
-    serializer_class = AlmacenSerializer
-    filterset_class = AlmacenFilter
-
-    def get_queryset(self):
-        idsucursal = self.request.query_params.get('idsucursal')
-        return AlmacenService.listar(idsucursal=uuid.UUID(idsucursal) if idsucursal else None)
-
-    def perform_destroy(self, instance):
-        instance.delete()
-
-    @extend_schema(
-        request=ToggleEstadoSerializer,
-        examples=[
-            OpenApiExample('Desactivar', value={'activo': False}, request_only=True),
-            OpenApiExample('Activar', value={'activo': True}, request_only=True),
-        ],
-    )
-    @action(detail=True, methods=['patch'], url_path='estado', serializer_class=ToggleEstadoSerializer)
-    def toggle_estado(self, request, pk=None):
-        almacen = self.get_object()
-        almacen.estado = request.data.get('activo', not almacen.estado)
-        almacen.save(update_fields=['estado'])
-        return Response({'estado': almacen.estado})
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def estadisticas(request):
+    from infrastructure.repositories.empresa_repo import EmpresaRepository
+    from infrastructure.models.seguridad_model import Usuario
+    empresa_repo = EmpresaRepository()
+    total = empresa_repo.get_all().count()
+    activas = empresa_repo.get_all().filter(estado=True).count()
+    return Response({
+        'total_empresas': total,
+        'total_usuarios': Usuario.objects.count(),
+        'empresas_activas': activas,
+        'empresas_inactivas': total - activas,
+    })

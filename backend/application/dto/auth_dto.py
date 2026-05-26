@@ -19,3 +19,7 @@ class LogoutSerializer(serializers.Serializer):
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(help_text='Contraseña actual')
     new_password = serializers.CharField(help_text='Nueva contraseña (mín. 8 caracteres)')
+
+
+class RefreshTokenSerializer(serializers.Serializer):
+    refresh = serializers.CharField(help_text='Token JWT de refresco')
