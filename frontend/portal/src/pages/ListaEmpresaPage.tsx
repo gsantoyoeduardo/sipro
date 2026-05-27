@@ -36,7 +36,6 @@ export default function ListaEmpresaPage() {
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
-  const [detalleModal, setDetalleModal] = useState<EmpresaDetalle | null>(null)
   const [crearModalAbierto, setCrearModalAbierto] = useState(false)
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)

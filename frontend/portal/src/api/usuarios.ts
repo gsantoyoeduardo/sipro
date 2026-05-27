@@ -22,6 +22,7 @@ export interface UsuarioFormData {
   password?: string
   telefono?: string
   tipo_usuario?: string
+  estado?: boolean
 }
 
 export const usuarioService = {

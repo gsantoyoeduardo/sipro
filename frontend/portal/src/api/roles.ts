@@ -11,6 +11,7 @@ export interface Rol {
 export interface RolFormData {
   nombre: string
   descripcion?: string
+  estado?: boolean
 }
 
 export const rolService = {
