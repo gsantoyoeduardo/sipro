@@ -1,0 +1,19 @@
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = ["E501", "B008"]
+
+[lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+"**/tests/**" = ["F401"]
+"apps/*/migrations/*" = ["F401"]
+"config/settings/*" = ["F403", "F405"]
+"infrastructure/swagger_hooks.py" = ["B007"]
+"infrastructure/utils/tenant_schema.py" = ["N801"]
+"infrastructure/repositories/base_repository.py" = ["UP046"]
+"test_api.py" = ["E402"]
+
+[format]
+quote-style = "single"
+indent-style = "space"

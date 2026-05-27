@@ -1,4 +1,5 @@
 from typing import Protocol
+
 from domain.services.routing.models import Parada, Ruta
 
 

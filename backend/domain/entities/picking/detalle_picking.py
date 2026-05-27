@@ -1,6 +1,7 @@
 import uuid
 from dataclasses import dataclass, field
 
+
 @dataclass
 class DetallePicking:
     iddetallepicking: uuid.UUID = field(default_factory=uuid.uuid4)

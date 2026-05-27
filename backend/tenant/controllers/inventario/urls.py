@@ -1,7 +1,12 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+
 from tenant.controllers.inventario.views import (
-    CategoriaViewSet, ProductoViewSet, LoteViewSet, InventarioViewSet, KardexViewSet
+    CategoriaViewSet,
+    InventarioViewSet,
+    KardexViewSet,
+    LoteViewSet,
+    ProductoViewSet,
 )
 
 router = DefaultRouter()

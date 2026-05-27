@@ -1,11 +1,13 @@
 import uuid
+
 import pytest
+from django.core.cache import cache
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
-from django.core.cache import cache
-from infrastructure.models.seguridad_model import Usuario
+
 from infrastructure.models.empresa_model import Empresa
+from infrastructure.models.seguridad_model import Usuario
 
 
 @pytest.mark.django_db
@@ -79,7 +81,7 @@ class TestRateLimit:
         ip = '1.2.3.4'
         cache_key = f'login_attempt_{ip}'
         cache.delete(cache_key)
-        for i in range(5):
+        for _i in range(5):
             api_client.post('/portal/auth/', {
                 'usuario': 'admin', 'password': 'wrong',
             }, format='json', REMOTE_ADDR=ip)

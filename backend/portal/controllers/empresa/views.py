@@ -1,13 +1,15 @@
-import uuid
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiExample
+
+from application.dto.empresa.empresa_dto import EmpresaListSerializer, EmpresaSerializer
 from application.dto.portal.registro_dto import CrearEmpresaSerializer
-from application.dto.empresa.empresa_dto import EmpresaSerializer, EmpresaListSerializer
-from application.services.portal.empresa_registration_service import EmpresaRegistrationService
 from application.services.empresa.empresa_service import EmpresaService
+from application.services.portal.empresa_registration_service import (
+    EmpresaRegistrationService,
+)
 from infrastructure.models.empresa_model import Empresa
 from infrastructure.utils.tenant_schema import tenant_schema
 
@@ -73,8 +75,6 @@ def crear_empresa(request):
 @permission_classes([IsAdminUser])
 def listar_empresas(request):
     empresas = EmpresaService.listar()
-    page = request.query_params.get('page', 1)
-    page_size = request.query_params.get('page_size', 20)
     serializer = EmpresaListSerializer(empresas, many=True)
     return Response({'results': serializer.data})
 
@@ -115,8 +115,8 @@ def desactivar_empresa(request, idempresa):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def listar_usuarios_empresa(request, idempresa):
-    from infrastructure.models.seguridad_model import Usuario
     from application.dto.seguridad.usuario_dto import UsuarioListSerializer
+    from infrastructure.models.seguridad_model import Usuario
     with tenant_schema(idempresa):
         usuarios = Usuario.objects.all().order_by('-fechacreacion')
         serializer = UsuarioListSerializer(usuarios, many=True)
@@ -125,22 +125,19 @@ def listar_usuarios_empresa(request, idempresa):
 
 @api_view(['PUT'])
 @permission_classes([IsAdminUser])
-def editar_usuario_empresa(request, idempresa, userId):
-    from infrastructure.models.seguridad_model import Usuario
-    from application.dto.seguridad.usuario_dto import UsuarioSerializer
+def editar_usuario_empresa(request, idempresa, user_id):
     from infrastructure.repositories.seguridad_repo import UsuarioRepository
     with tenant_schema(idempresa):
-        usuario = Usuario.objects.get(pk=userId)
         repo = UsuarioRepository()
-        repo.update(userId, request.data)
+        repo.update(user_id, request.data)
         return Response({'mensaje': 'Usuario actualizado exitosamente'})
 
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def sesiones_empresa(request, idempresa):
-    from infrastructure.models.seguridad_model import SesionUsuario
     from application.dto.seguridad.sesion_dto import SesionUsuarioSerializer
+    from infrastructure.models.seguridad_model import SesionUsuario
     with tenant_schema(idempresa):
         sesiones = SesionUsuario.objects.filter(activa=True).order_by('-fechainicio')
         serializer = SesionUsuarioSerializer(sesiones, many=True)
@@ -150,8 +147,8 @@ def sesiones_empresa(request, idempresa):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def estadisticas(request):
-    from infrastructure.repositories.empresa_repo import EmpresaRepository
     from infrastructure.models.seguridad_model import Usuario
+    from infrastructure.repositories.empresa_repo import EmpresaRepository
     empresa_repo = EmpresaRepository()
     total = empresa_repo.get_all().count()
     activas = empresa_repo.get_all().filter(estado=True).count()

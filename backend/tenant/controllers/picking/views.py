@@ -1,14 +1,17 @@
 from django.utils import timezone
-from rest_framework import viewsets, status
+from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiExample
-from infrastructure.models.picking_model import OrdenPicking, DetallePicking, Incidencia
-from application.dto.picking.orden_dto import OrdenPickingSerializer, OrdenPickingListSerializer
+
 from application.dto.picking.detalle_dto import DetallePickingSerializer, PickSerializer
 from application.dto.picking.incidencia_dto import IncidenciaSerializer
-from application.dto.shared_dto import ToggleEstadoSerializer
+from application.dto.picking.orden_dto import (
+    OrdenPickingListSerializer,
+    OrdenPickingSerializer,
+)
 from application.filters.picking.orden_filter import OrdenPickingFilter
+from infrastructure.models.picking_model import DetallePicking, Incidencia, OrdenPicking
 
 
 @extend_schema_view(

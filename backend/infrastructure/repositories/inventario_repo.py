@@ -1,5 +1,13 @@
 import uuid
-from infrastructure.models.inventario_model import Categoria, Producto, Lote, Inventario, Kardex
+
+from infrastructure.models.inventario_model import (
+    Categoria,
+    Inventario,
+    Kardex,
+    Lote,
+    Producto,
+)
+
 from .base_repository import BaseRepository
 
 

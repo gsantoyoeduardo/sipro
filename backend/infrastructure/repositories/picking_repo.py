@@ -1,5 +1,7 @@
 import uuid
-from infrastructure.models.picking_model import OrdenPicking, DetallePicking, Incidencia
+
+from infrastructure.models.picking_model import DetallePicking, Incidencia, OrdenPicking
+
 from .base_repository import BaseRepository
 
 

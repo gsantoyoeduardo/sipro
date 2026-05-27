@@ -1,19 +1,34 @@
-from rest_framework import viewsets, status
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+)
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiExample
-from infrastructure.models.inventario_model import Categoria, Producto, Lote, Inventario, Kardex
+
 from application.dto.inventario.categoria_dto import CategoriaSerializer
-from application.dto.inventario.producto_dto import ProductoSerializer, ProductoListSerializer
-from application.dto.inventario.lote_dto import LoteSerializer
 from application.dto.inventario.inventario_dto import InventarioSerializer
 from application.dto.inventario.kardex_dto import KardexSerializer
+from application.dto.inventario.lote_dto import LoteSerializer
+from application.dto.inventario.producto_dto import (
+    ProductoListSerializer,
+    ProductoSerializer,
+)
 from application.dto.shared_dto import ToggleEstadoSerializer
-from application.filters.inventario.producto_filter import ProductoFilter
-from application.filters.inventario.lote_filter import LoteFilter
 from application.filters.inventario.inventario_filter import InventarioFilter
 from application.filters.inventario.kardex_filter import KardexFilter
+from application.filters.inventario.lote_filter import LoteFilter
+from application.filters.inventario.producto_filter import ProductoFilter
 from application.services.inventario.picking_service import PickingService
+from infrastructure.models.inventario_model import (
+    Categoria,
+    Inventario,
+    Kardex,
+    Lote,
+    Producto,
+)
 
 
 @extend_schema_view(

@@ -7,7 +7,16 @@ del tenant (o ``public`` para usuarios del portal).
 """
 
 import uuid
-from infrastructure.models.seguridad_model import Usuario, Rol, Permiso, UsuarioRol, RolPermiso, SesionUsuario
+
+from infrastructure.models.seguridad_model import (
+    Permiso,
+    Rol,
+    RolPermiso,
+    SesionUsuario,
+    Usuario,
+    UsuarioRol,
+)
+
 from .base_repository import BaseRepository
 
 

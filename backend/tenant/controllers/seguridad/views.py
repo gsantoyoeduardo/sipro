@@ -1,17 +1,34 @@
 import uuid
-from rest_framework import viewsets, status
+
+from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from application.dto.seguridad.usuario_dto import UsuarioSerializer, UsuarioListSerializer
-from application.dto.seguridad.rol_dto import RolSerializer, RolDetalleSerializer
+
+from application.dto.seguridad.auth_dto import (
+    AsignarPermisosSerializer,
+    AsignarRolesSerializer,
+    RemovePermisoSerializer,
+    ResetPasswordSerializer,
+)
 from application.dto.seguridad.permiso_dto import PermisoSerializer
+from application.dto.seguridad.rol_dto import RolDetalleSerializer, RolSerializer
 from application.dto.seguridad.sesion_dto import SesionUsuarioSerializer
-from application.dto.seguridad.auth_dto import ResetPasswordSerializer, AsignarRolesSerializer, AsignarPermisosSerializer, RemovePermisoSerializer
+from application.dto.seguridad.usuario_dto import (
+    UsuarioListSerializer,
+    UsuarioSerializer,
+)
 from application.dto.shared_dto import ToggleEstadoSerializer
-from application.services.seguridad.auth_service import UsuarioService, RolService, AuthService
-from infrastructure.repositories.seguridad_repo import PermisoRepository, SesionRepository
 from application.filters.seguridad.usuario_filter import UsuarioFilter
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiExample
+from application.services.seguridad.auth_service import (
+    AuthService,
+    RolService,
+    UsuarioService,
+)
+from infrastructure.repositories.seguridad_repo import (
+    PermisoRepository,
+    SesionRepository,
+)
 
 permiso_repo = PermisoRepository()
 sesion_repo = SesionRepository()

@@ -1,1 +1,0 @@
-from infrastructure.models.transferencia_model import Transferencia, DetalleTransferencia

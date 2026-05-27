@@ -1,7 +1,13 @@
 from django.urls import path
+
 from portal.controllers.usuarios.views import (
-    listar_usuarios, crear_usuario, detalle_usuario,
-    editar_usuario, desactivar_usuario, restablecer_contrasena, asignar_roles
+    asignar_roles,
+    crear_usuario,
+    desactivar_usuario,
+    detalle_usuario,
+    editar_usuario,
+    listar_usuarios,
+    restablecer_contrasena,
 )
 
 urlpatterns = [

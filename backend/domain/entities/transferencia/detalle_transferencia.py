@@ -1,6 +1,7 @@
 import uuid
 from dataclasses import dataclass, field
 
+
 @dataclass
 class DetalleTransferencia:
     iddetalletransferencia: uuid.UUID = field(default_factory=uuid.uuid4)

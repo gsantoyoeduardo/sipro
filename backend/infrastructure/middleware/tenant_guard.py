@@ -36,11 +36,10 @@ class TenantGuardMiddleware:
         idempresa_token = getattr(request.user, 'idempresa_id', None) or getattr(request.user, 'idempresa', None)
         tenant_header = request.headers.get('X-Tenant-ID') or request.GET.get('tenant_id')
 
-        if idempresa_token and tenant_header:
-            if str(idempresa_token) != str(tenant_header):
-                return JsonResponse(
-                    {'error': 'El tenant solicitado no corresponde a su empresa.'},
-                    status=403,
-                )
+        if idempresa_token and tenant_header and str(idempresa_token) != str(tenant_header):
+            return JsonResponse(
+                {'error': 'El tenant solicitado no corresponde a su empresa.'},
+                status=403,
+            )
 
         return self.get_response(request)

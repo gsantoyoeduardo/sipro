@@ -1,5 +1,5 @@
-from domain.services.routing.models import Parada, Ruta, Tramo
 from domain.services.routing.interfaces.i_route_optimizer import IRouteOptimizer
+from domain.services.routing.models import Parada, Ruta, Tramo
 
 
 class NearestNeighborOptimizer(IRouteOptimizer):

@@ -1,7 +1,7 @@
 import math
-from collections import defaultdict
-from domain.services.routing.models import Parada, Punto, Ruta, Tramo
+
 from domain.services.routing.interfaces.i_route_optimizer import IRouteOptimizer
+from domain.services.routing.models import Parada, Ruta, Tramo
 from domain.services.routing.optimizers.two_opt import TwoOptOptimizer
 
 
@@ -82,7 +82,6 @@ class ClusteredOptimizer(IRouteOptimizer):
         return [c for c in clusters if c]
 
     def _submatriz(self, matriz: list[list[float]], indices: list[int]) -> list[list[float]]:
-        mapa = {orig: i for i, orig in enumerate(indices)}
         n = len(indices)
         sub = [[0.0] * n for _ in range(n)]
         for i in range(n):

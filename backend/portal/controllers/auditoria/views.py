@@ -1,16 +1,33 @@
 from rest_framework import serializers, viewsets
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
+
 from infrastructure.models.base_model import (
-    AuditoriaEmpresa, AuditoriaSucursal, AuditoriaAlmacen,
-    AuditoriaUsuario, AuditoriaRol, AuditoriaPermiso,
-    AuditoriaUsuarioRol, AuditoriaRolPermiso, AuditoriaSesionUsuario,
-    AuditoriaCategoria, AuditoriaProducto, AuditoriaLote,
-    AuditoriaInventario, AuditoriaKardex,
-    AuditoriaZona, AuditoriaEstante,
-    AuditoriaNivel, AuditoriaUbicacion, AuditoriaNodo, AuditoriaConexion,
-    AuditoriaOrdenPicking, AuditoriaDetallePicking, AuditoriaIncidencia,
-    AuditoriaTransferencia, AuditoriaDetalleTransferencia,
+    AuditoriaAlmacen,
+    AuditoriaCategoria,
+    AuditoriaConexion,
+    AuditoriaDetallePicking,
+    AuditoriaDetalleTransferencia,
+    AuditoriaEmpresa,
+    AuditoriaEstante,
+    AuditoriaIncidencia,
+    AuditoriaInventario,
+    AuditoriaKardex,
+    AuditoriaLote,
+    AuditoriaNivel,
+    AuditoriaNodo,
+    AuditoriaOrdenPicking,
+    AuditoriaPermiso,
+    AuditoriaProducto,
+    AuditoriaRol,
+    AuditoriaRolPermiso,
+    AuditoriaSesionUsuario,
+    AuditoriaSucursal,
+    AuditoriaTransferencia,
+    AuditoriaUbicacion,
+    AuditoriaUsuario,
+    AuditoriaUsuarioRol,
+    AuditoriaZona,
 )
 from infrastructure.utils.tenant_schema import tenant_schema
 

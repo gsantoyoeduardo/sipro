@@ -1,7 +1,12 @@
 from django.urls import path
+
 from portal.controllers.roles.views import (
-    listar_roles, crear_rol, detalle_rol,
-    editar_rol, desactivar_rol, asignar_permisos
+    asignar_permisos,
+    crear_rol,
+    desactivar_rol,
+    detalle_rol,
+    editar_rol,
+    listar_roles,
 )
 
 urlpatterns = [

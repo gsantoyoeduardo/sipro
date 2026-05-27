@@ -1,13 +1,19 @@
 from django.utils import timezone
-from rest_framework import viewsets, status
+from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiExample
-from infrastructure.models.transferencia_model import Transferencia, DetalleTransferencia
-from application.dto.transferencia.transferencia_dto import TransferenciaSerializer, TransferenciaListSerializer
+
 from application.dto.transferencia.detalle_dto import DetalleTransferenciaSerializer
-from application.dto.shared_dto import ToggleEstadoSerializer
+from application.dto.transferencia.transferencia_dto import (
+    TransferenciaListSerializer,
+    TransferenciaSerializer,
+)
 from application.filters.transferencia.transferencia_filter import TransferenciaFilter
+from infrastructure.models.transferencia_model import (
+    DetalleTransferencia,
+    Transferencia,
+)
 
 
 @extend_schema_view(

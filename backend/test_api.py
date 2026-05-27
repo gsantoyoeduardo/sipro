@@ -1,6 +1,7 @@
-import os
-import django
 import json
+import os
+
+import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.dev')
 django.setup()
@@ -24,7 +25,7 @@ if r.status_code == 200:
     d = json.loads(r.content)
     token = d.get('access')
     print(f"Token: {token[:50]}...")
-    
+
     # Step 2: Create empresa
     print("\n=== Step 2: Create Empresa ===")
     r2 = c.post(

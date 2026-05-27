@@ -1,5 +1,7 @@
 import django_filters
+
 from infrastructure.models.picking_model import DetallePicking
+
 
 class DetallePickingFilter(django_filters.FilterSet):
     class Meta:

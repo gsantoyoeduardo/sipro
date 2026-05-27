@@ -1,29 +1,74 @@
 from django.apps import AppConfig
 
+
 class BaseConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.base'
     label = 'base'
 
     def ready(self):
-        from . import audit_signals
         from infrastructure.models.base_model import (
-            AuditoriaEmpresa, AuditoriaSucursal, AuditoriaAlmacen,
-            AuditoriaUsuario, AuditoriaRol, AuditoriaPermiso,
-            AuditoriaUsuarioRol, AuditoriaRolPermiso, AuditoriaSesionUsuario,
-            AuditoriaCategoria, AuditoriaProducto, AuditoriaLote,
-            AuditoriaInventario, AuditoriaKardex,
-            AuditoriaZona, AuditoriaPasillo, AuditoriaEstante,
-            AuditoriaNivel, AuditoriaUbicacion, AuditoriaNodo, AuditoriaConexion,
-            AuditoriaOrdenPicking, AuditoriaDetallePicking, AuditoriaIncidencia,
-            AuditoriaTransferencia, AuditoriaDetalleTransferencia,
+            AuditoriaAlmacen,
+            AuditoriaCategoria,
+            AuditoriaConexion,
+            AuditoriaDetallePicking,
+            AuditoriaDetalleTransferencia,
+            AuditoriaEmpresa,
+            AuditoriaEstante,
+            AuditoriaIncidencia,
+            AuditoriaInventario,
+            AuditoriaKardex,
+            AuditoriaLote,
+            AuditoriaNivel,
+            AuditoriaNodo,
+            AuditoriaOrdenPicking,
+            AuditoriaPermiso,
+            AuditoriaProducto,
+            AuditoriaRol,
+            AuditoriaRolPermiso,
+            AuditoriaSesionUsuario,
+            AuditoriaSucursal,
+            AuditoriaTransferencia,
+            AuditoriaUbicacion,
+            AuditoriaUsuario,
+            AuditoriaUsuarioRol,
+            AuditoriaZona,
         )
-        from infrastructure.models.empresa_model import Empresa, Sucursal, Almacen
-        from infrastructure.models.seguridad_model import Usuario, Rol, Permiso, UsuarioRol, RolPermiso, SesionUsuario
-        from infrastructure.models.inventario_model import Categoria, Producto, Lote, Inventario, Kardex
-        from infrastructure.models.layout_model import Zona, Estante, Nivel, Ubicacion, Nodo, Conexion
-        from infrastructure.models.picking_model import OrdenPicking, DetallePicking, Incidencia
-        from infrastructure.models.transferencia_model import Transferencia, DetalleTransferencia
+        from infrastructure.models.empresa_model import Almacen, Empresa, Sucursal
+        from infrastructure.models.inventario_model import (
+            Categoria,
+            Inventario,
+            Kardex,
+            Lote,
+            Producto,
+        )
+        from infrastructure.models.layout_model import (
+            Conexion,
+            Estante,
+            Nivel,
+            Nodo,
+            Ubicacion,
+            Zona,
+        )
+        from infrastructure.models.picking_model import (
+            DetallePicking,
+            Incidencia,
+            OrdenPicking,
+        )
+        from infrastructure.models.seguridad_model import (
+            Permiso,
+            Rol,
+            RolPermiso,
+            SesionUsuario,
+            Usuario,
+            UsuarioRol,
+        )
+        from infrastructure.models.transferencia_model import (
+            DetalleTransferencia,
+            Transferencia,
+        )
+
+        from . import audit_signals
 
         audit_signals.register_audit(Empresa, AuditoriaEmpresa)
         audit_signals.register_audit(Sucursal, AuditoriaSucursal)

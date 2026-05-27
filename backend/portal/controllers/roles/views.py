@@ -2,9 +2,10 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
-from application.services.seguridad.auth_service import RolService
-from application.dto.seguridad.rol_dto import RolSerializer, RolDetalleSerializer
+
 from application.dto.seguridad.auth_dto import AsignarPermisosSerializer
+from application.dto.seguridad.rol_dto import RolDetalleSerializer, RolSerializer
+from application.services.seguridad.auth_service import RolService
 
 
 @api_view(['GET'])

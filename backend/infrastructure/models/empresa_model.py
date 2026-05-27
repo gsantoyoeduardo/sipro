@@ -6,7 +6,9 @@ Cada modelo hereda de AuditableBaseModel para auditoría (creación, modificaci�
 """
 
 import uuid
+
 from django.db import models
+
 from infrastructure.models.base_model import AuditableBaseModel
 
 

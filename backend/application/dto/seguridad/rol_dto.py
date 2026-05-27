@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from infrastructure.models.seguridad_model import Rol, Permiso
+
+from infrastructure.models.seguridad_model import Permiso, Rol
+
 from .permiso_dto import PermisoSerializer
 
 

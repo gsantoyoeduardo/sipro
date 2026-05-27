@@ -2,6 +2,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 
+
 @dataclass
 class Usuario:
     idusuario: uuid.UUID = field(default_factory=uuid.uuid4)

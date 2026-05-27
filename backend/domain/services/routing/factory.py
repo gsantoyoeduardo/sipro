@@ -1,6 +1,10 @@
-from domain.services.routing.models import Parada
 from domain.services.routing.interfaces.i_route_optimizer import IRouteOptimizer
-from domain.services.routing.optimizers import NearestNeighborOptimizer, TwoOptOptimizer, ClusteredOptimizer
+from domain.services.routing.models import Parada
+from domain.services.routing.optimizers import (
+    ClusteredOptimizer,
+    NearestNeighborOptimizer,
+    TwoOptOptimizer,
+)
 
 
 class RouteOptimizerFactory:

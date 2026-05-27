@@ -1,7 +1,11 @@
 from django.urls import path
+
 from portal.controllers.permisos.views import (
-    listar_permisos, crear_permiso, detalle_permiso,
-    editar_permiso, eliminar_permiso
+    crear_permiso,
+    detalle_permiso,
+    editar_permiso,
+    eliminar_permiso,
+    listar_permisos,
 )
 
 urlpatterns = [

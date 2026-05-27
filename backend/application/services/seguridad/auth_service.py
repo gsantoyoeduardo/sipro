@@ -1,13 +1,18 @@
-import uuid
 import hashlib
 import logging
+import uuid
+
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
-from infrastructure.repositories.seguridad_repo import (
-    UsuarioRepository, RolRepository, PermisoRepository, SesionRepository
-)
+
 from application.dto.seguridad.usuario_dto import UsuarioSerializer
+from infrastructure.repositories.seguridad_repo import (
+    PermisoRepository,
+    RolRepository,
+    SesionRepository,
+    UsuarioRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +41,9 @@ class AuthService:
 
     @staticmethod
     def tenant_login(ruc: str, usuario: str, password: str, ip: str, user_agent: str):
-        from infrastructure.models.empresa_model import Empresa
-        from infrastructure.models.seguridad_model import Usuario as UsuarioModel
         from django.db import connection
+
+        from infrastructure.models.empresa_model import Empresa
 
         empresa = Empresa.objects.filter(ruc=ruc, estado=True).first()
         if not empresa:
@@ -72,10 +77,9 @@ class AuthService:
     def _create_session(user, ip: str, user_agent: str, extra_claims: dict | None = None):
         import uuid
         from datetime import datetime, timedelta
-        from django.conf import settings
-        from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+
         from rest_framework_simplejwt.settings import api_settings
-        from django.db import connection
+        from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
         now = datetime.utcnow()
         refresh_exp = now + timedelta(seconds=api_settings.REFRESH_TOKEN_LIFETIME.total_seconds())

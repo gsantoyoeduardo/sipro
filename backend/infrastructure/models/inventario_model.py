@@ -6,7 +6,9 @@ y el kardex de movimientos para el control de existencias.
 """
 
 import uuid
+
 from django.db import models
+
 from infrastructure.models.base_model import AuditableBaseModel
 
 

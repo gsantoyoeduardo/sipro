@@ -1,10 +1,10 @@
-import uuid
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
-from infrastructure.repositories.seguridad_repo import PermisoRepository
+
 from application.dto.seguridad.permiso_dto import PermisoSerializer
+from infrastructure.repositories.seguridad_repo import PermisoRepository
 
 permiso_repo = PermisoRepository()
 

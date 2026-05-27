@@ -1,5 +1,10 @@
 import uuid
-from infrastructure.models.transferencia_model import Transferencia, DetalleTransferencia
+
+from infrastructure.models.transferencia_model import (
+    DetalleTransferencia,
+    Transferencia,
+)
+
 from .base_repository import BaseRepository
 
 

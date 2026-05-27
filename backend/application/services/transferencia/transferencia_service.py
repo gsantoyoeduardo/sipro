@@ -1,6 +1,8 @@
 import uuid
+
 from infrastructure.repositories.transferencia_repo import (
-    TransferenciaRepository, DetalleTransferenciaRepository
+    DetalleTransferenciaRepository,
+    TransferenciaRepository,
 )
 
 transferencia_repo = TransferenciaRepository()

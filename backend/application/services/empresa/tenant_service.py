@@ -1,8 +1,7 @@
 import uuid
-import os
-import django
-from django.conf import settings
+
 from django.db import connection
+
 from infrastructure.repositories.empresa_repo import EmpresaRepository
 
 empresa_repo = EmpresaRepository()
@@ -19,27 +18,32 @@ class TenantService:
     @staticmethod
     def ejecutar_migraciones_tenant(schema_name: str):
         from django.db import connection
-        
+
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT table_name FROM information_schema.tables 
-                WHERE table_schema = 'public' 
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema = 'public'
                 AND table_type = 'BASE TABLE'
                 AND table_name NOT LIKE 'django_%'
                 AND table_name NOT LIKE 'auth_%'
                 AND table_name NOT LIKE 'token_%'
             """)
             tables = [row[0] for row in cursor.fetchall()]
-            
+
             for table in tables:
                 cursor.execute(f"""
-                    CREATE TABLE IF NOT EXISTS "{schema_name}"."{table}" 
+                    CREATE TABLE IF NOT EXISTS "{schema_name}"."{table}"
                     (LIKE "public"."{table}" INCLUDING ALL)
                 """)
 
     @staticmethod
     def seed_tenant_data(schema_name: str, empresa, admin):
-        from infrastructure.models.seguridad_model import Permiso, Rol, RolPermiso, UsuarioRol
+        from infrastructure.models.seguridad_model import (
+            Permiso,
+            Rol,
+            RolPermiso,
+            UsuarioRol,
+        )
         with connection.cursor() as cursor:
             cursor.execute("SHOW search_path")
             original_search_path = cursor.fetchone()[0]
@@ -47,7 +51,7 @@ class TenantService:
             with connection.cursor() as cursor:
                 cursor.execute(f"SET search_path TO \"{schema_name}\", public")
 
-            PERMISOS_DATA = [
+            permisos_data = [
                 ('ver_empresa', 'Ver Empresas', 'Visualizar listado y detalle de empresas'),
                 ('crear_empresa', 'Crear Empresas', 'Registrar nuevas empresas'),
                 ('editar_empresa', 'Editar Empresas', 'Modificar datos de empresas'),
@@ -75,7 +79,7 @@ class TenantService:
             ]
 
             permisos_map = {}
-            for codigo, nombre, descripcion in PERMISOS_DATA:
+            for codigo, nombre, descripcion in permisos_data:
                 p, _ = Permiso.objects.get_or_create(
                     codigo=codigo,
                     defaults={'nombre': nombre, 'descripcion': descripcion},

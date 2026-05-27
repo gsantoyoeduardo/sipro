@@ -1,7 +1,7 @@
-import uuid
 from django.db import transaction
-from infrastructure.repositories.empresa_repo import EmpresaRepository
+
 from application.services.empresa.tenant_service import TenantService
+from infrastructure.repositories.empresa_repo import EmpresaRepository
 from infrastructure.utils.tenant_schema import tenant_schema
 
 empresa_repo = EmpresaRepository()

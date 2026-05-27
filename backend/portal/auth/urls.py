@@ -1,5 +1,10 @@
 from django.urls import path
-from portal.auth.views import portal_login_view, portal_logout_view, change_password_view
+
+from portal.auth.views import (
+    change_password_view,
+    portal_login_view,
+    portal_logout_view,
+)
 
 urlpatterns = [
     path('', portal_login_view, name='portal-login'),

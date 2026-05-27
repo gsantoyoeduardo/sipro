@@ -1,9 +1,13 @@
 import uuid
-from infrastructure.repositories.inventario_repo import (
-    CategoriaRepository, ProductoRepository, LoteRepository,
-    InventarioRepository, KardexRepository,
-)
+
 from application.services.inventario.picking_service import PickingService
+from infrastructure.repositories.inventario_repo import (
+    CategoriaRepository,
+    InventarioRepository,
+    KardexRepository,
+    LoteRepository,
+    ProductoRepository,
+)
 
 categoria_repo = CategoriaRepository()
 producto_repo = ProductoRepository()

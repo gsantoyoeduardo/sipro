@@ -1,5 +1,6 @@
 import pytest
 from rest_framework import status
+
 from infrastructure.models.empresa_model import Empresa
 
 

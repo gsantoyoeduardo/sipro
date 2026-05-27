@@ -1,10 +1,11 @@
 import uuid
+
 import pytest
 from django.test import override_settings
 from rest_framework.test import APIClient
 
-from infrastructure.models.seguridad_model import Usuario
 from infrastructure.models.empresa_model import Empresa
+from infrastructure.models.seguridad_model import Usuario
 
 
 @pytest.fixture

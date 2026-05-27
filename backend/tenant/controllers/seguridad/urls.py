@@ -1,6 +1,12 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from tenant.controllers.seguridad.views import UsuarioViewSet, RolViewSet, PermisoViewSet, SesionUsuarioViewSet
+
+from tenant.controllers.seguridad.views import (
+    PermisoViewSet,
+    RolViewSet,
+    SesionUsuarioViewSet,
+    UsuarioViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'usuarios', UsuarioViewSet)

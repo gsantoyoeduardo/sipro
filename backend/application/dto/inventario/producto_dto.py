@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from infrastructure.models.inventario_model import Producto, Inventario
+
+from infrastructure.models.inventario_model import Inventario, Producto
 
 
 class ProductoSerializer(serializers.ModelSerializer):

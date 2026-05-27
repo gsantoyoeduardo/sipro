@@ -1,6 +1,14 @@
 import uuid
-from django.db import models
-from infrastructure.models.layout_model import Zona, Estante, Nivel, Ubicacion, Nodo, Conexion
+
+from infrastructure.models.layout_model import (
+    Conexion,
+    Estante,
+    Nivel,
+    Nodo,
+    Ubicacion,
+    Zona,
+)
+
 from .base_repository import BaseRepository
 
 

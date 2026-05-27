@@ -1,5 +1,11 @@
 from django.urls import path
-from tenant.auth.views import tenant_login_view, tenant_logout_view, tenant_refresh_view, change_password_view
+
+from tenant.auth.views import (
+    change_password_view,
+    tenant_login_view,
+    tenant_logout_view,
+    tenant_refresh_view,
+)
 
 urlpatterns = [
     path('', tenant_login_view, name='tenant-login'),

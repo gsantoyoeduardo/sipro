@@ -5,15 +5,36 @@ from django.core.management.base import BaseCommand
 from django.db import connection
 from django.utils import timezone
 
-from infrastructure.models.empresa_model import Almacen, Empresa, Sucursal
-from infrastructure.models.inventario_model import Categoria, Inventario, Kardex, Lote, Producto
-from infrastructure.models.layout_model import Conexion, Estante, Nivel, Nodo, Ubicacion, Zona
-from infrastructure.models.picking_model import DetallePicking, Incidencia, OrdenPicking
-from infrastructure.models.seguridad_model import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
-from infrastructure.models.transferencia_model import DetalleTransferencia, Transferencia
-from infrastructure.utils.tenant_schema import tenant_schema
 from application.services.empresa.tenant_service import TenantService
-
+from infrastructure.models.empresa_model import Almacen, Empresa, Sucursal
+from infrastructure.models.inventario_model import (
+    Categoria,
+    Inventario,
+    Kardex,
+    Lote,
+    Producto,
+)
+from infrastructure.models.layout_model import (
+    Conexion,
+    Estante,
+    Nivel,
+    Nodo,
+    Ubicacion,
+    Zona,
+)
+from infrastructure.models.picking_model import DetallePicking, Incidencia, OrdenPicking
+from infrastructure.models.seguridad_model import (
+    Permiso,
+    Rol,
+    RolPermiso,
+    Usuario,
+    UsuarioRol,
+)
+from infrastructure.models.transferencia_model import (
+    DetalleTransferencia,
+    Transferencia,
+)
+from infrastructure.utils.tenant_schema import tenant_schema
 
 EMPRESAS_DATA = [
     {
@@ -24,8 +45,8 @@ EMPRESAS_DATA = [
         'telefono': '01-555-0100',
         'direccion': 'Av. Los Almacenes 123, Lima',
         'sucursales': [
-            {'nombre': 'Sede Central Lima', 'codigo': 'SEDE001', 'direccion': 'Av. Principal 456, Lima', 'ancho_plano': 2500, 'alto_plano': 1800},
-            {'nombre': 'Sede Arequipa', 'codigo': 'SEDE002', 'direccion': 'Calle Comercio 789, Arequipa', 'ancho_plano': 2000, 'alto_plano': 1400},
+            {'nombre': 'Sede Central Lima', 'codigo': 'SEDE001', 'direccion': 'Av. Principal 456, Lima', 'ancho_plano': 3000, 'alto_plano': 1800},
+            {'nombre': 'Sede Arequipa', 'codigo': 'SEDE002', 'direccion': 'Calle Comercio 789, Arequipa', 'ancho_plano': 3000, 'alto_plano': 1800},
         ],
     },
     {
@@ -36,8 +57,8 @@ EMPRESAS_DATA = [
         'telefono': '044-555-0200',
         'direccion': 'Av. Industrial 456, Trujillo',
         'sucursales': [
-            {'nombre': 'Sede Trujillo', 'codigo': 'SEDE003', 'direccion': 'Av. Industrial 456, Trujillo', 'ancho_plano': 2200, 'alto_plano': 1600},
-            {'nombre': 'Sede Chiclayo', 'codigo': 'SEDE004', 'direccion': 'Calle Los Olivos 123, Chiclayo', 'ancho_plano': 1800, 'alto_plano': 1200},
+            {'nombre': 'Sede Trujillo', 'codigo': 'SEDE003', 'direccion': 'Av. Industrial 456, Trujillo', 'ancho_plano': 3000, 'alto_plano': 1800},
+            {'nombre': 'Sede Chiclayo', 'codigo': 'SEDE004', 'direccion': 'Calle Los Olivos 123, Chiclayo', 'ancho_plano': 3000, 'alto_plano': 1800},
         ],
     },
     {
@@ -48,8 +69,8 @@ EMPRESAS_DATA = [
         'telefono': '084-555-0300',
         'direccion': 'Av. Ejército 789, Cusco',
         'sucursales': [
-            {'nombre': 'Sede Cusco', 'codigo': 'SEDE005', 'direccion': 'Av. Ejército 789, Cusco', 'ancho_plano': 2000, 'alto_plano': 1500},
-            {'nombre': 'Sede Arequipa Sur', 'codigo': 'SEDE006', 'direccion': 'Jr. Almacenes 321, Arequipa', 'ancho_plano': 1600, 'alto_plano': 1200},
+            {'nombre': 'Sede Cusco', 'codigo': 'SEDE005', 'direccion': 'Av. Ejército 789, Cusco', 'ancho_plano': 3000, 'alto_plano': 1800},
+            {'nombre': 'Sede Arequipa Sur', 'codigo': 'SEDE006', 'direccion': 'Jr. Almacenes 321, Arequipa', 'ancho_plano': 3000, 'alto_plano': 1800},
         ],
     },
 ]
@@ -257,7 +278,8 @@ class Command(BaseCommand):
                 emp_data['sucursales'], empresa, empresa_num
             )
 
-            self._seed_layout(sucursales[0], almacenes[0], idx)
+            almacenes_suc0 = [a for a in almacenes if a.idsucursal_id == sucursales[0].idsucursal]
+            self._seed_layout(sucursales[0], almacenes_suc0, idx)
             productos = self._seed_inventario()
             self._seed_kardex_tenant()
             self._seed_picking(almacenes[0], productos, idx)
@@ -305,7 +327,7 @@ class Command(BaseCommand):
             usuario=sup_usuario,
             defaults={
                 'correo': f'{sup_usuario}@sipro.com',
-                'nombres': f'Supervisor',
+                'nombres': 'Supervisor',
                 'apellidos': 'Empresa',
                 'idempresa': empresa,
                 'tipo_usuario': 'admin_empresa',
@@ -335,7 +357,7 @@ class Command(BaseCommand):
             usuario=op_usuario,
             defaults={
                 'correo': f'{op_usuario}@sipro.com',
-                'nombres': f'Operario',
+                'nombres': 'Operario',
                 'apellidos': 'Almacén',
                 'idempresa': empresa,
                 'tipo_usuario': 'operador',
@@ -370,26 +392,33 @@ class Command(BaseCommand):
             sucursales.append(suc)
             self._log('', 'Sucursal', f'{suc.nombre} ({suc.codigo})')
 
+        almacenes_config = [
+            ('N1', 'Almacén Norte 1', 'Almacén zona norte — recepción', Decimal('760'), Decimal('400')),
+            ('N2', 'Almacén Norte 2', 'Almacén zona norte — central', Decimal('760'), Decimal('400')),
+            ('N3', 'Almacén Norte 3', 'Almacén zona norte — expedición', Decimal('800'), Decimal('400')),
+            ('S1', 'Almacén Sur', 'Almacén zona sur — desarrollo', Decimal('780'), Decimal('600')),
+        ]
         almacenes = []
         for suc in sucursales:
-            a, _ = Almacen.objects.get_or_create(
-                idsucursal=suc,
-                codigo=f'ALM{empresa_num}{suc.codigo[-3:]}',
-                defaults={
-                    'nombre': f'Almacén {suc.nombre}',
-                    'descripcion': f'Almacén principal de {suc.nombre}',
-                    'capacidadmaxima': 10000,
-                },
-            )
-            almacenes.append(a)
-            self._log('', 'Almacén', f'{a.nombre} ({a.codigo})')
+            for suffix, nombre, descripcion, ancho, alto in almacenes_config:
+                a, _ = Almacen.objects.get_or_create(
+                    idsucursal=suc,
+                    codigo=f'ALM-{suffix}',
+                    defaults={
+                        'nombre': nombre,
+                        'descripcion': descripcion,
+                        'capacidadmaxima': Decimal('10000'),
+                        'ancho': ancho,
+                        'alto': alto,
+                    },
+                )
+                almacenes.append(a)
+                self._log('', 'Almacén', f'{a.nombre} ({a.codigo})')
 
         return sucursales, almacenes
 
-    def _seed_layout(self, sucursal, almacen, idx):
+    def _seed_layout(self, sucursal, almacenes, idx):
         self._section(f'    Layout — {sucursal.nombre}')
-        offset_x = idx * 50
-        offset_y = idx * 30
 
         zona_recepcion, _ = Zona.objects.get_or_create(
             idsucursal=sucursal,
@@ -397,12 +426,20 @@ class Command(BaseCommand):
             defaults={
                 'nombre': 'Recepción',
                 'tipo': 'recepcion',
-                'x': 0 + offset_x, 'y': 0 + offset_y,
-                'poligono': {'type': 'polygon', 'points': [
-                    {'x': 0, 'y': 0}, {'x': 400, 'y': 0},
-                    {'x': 400, 'y': 200}, {'x': 200, 'y': 250}, {'x': 0, 'y': 200}
-                ]},
-                'color': '#4CAF50',
+                'x': 0, 'y': 0,
+                'ancho': 600, 'alto': 400,
+                'color': '#FF9800',
+            },
+        )
+        zona_pasillo, _ = Zona.objects.get_or_create(
+            idsucursal=sucursal,
+            codigo=f'Z-PPAL-E{idx+1}',
+            defaults={
+                'nombre': 'Pasillo Principal',
+                'tipo': 'recepcion',
+                'x': 0, 'y': 420,
+                'ancho': 3000, 'alto': 160,
+                'color': '#00BCD4',
             },
         )
         zona_despacho, _ = Zona.objects.get_or_create(
@@ -411,114 +448,114 @@ class Command(BaseCommand):
             defaults={
                 'nombre': 'Despacho',
                 'tipo': 'despacho',
-                'x': 0 + offset_x, 'y': 800 + offset_y,
-                'poligono': {'type': 'polygon', 'points': [
-                    {'x': 0, 'y': 800}, {'x': 300, 'y': 800},
-                    {'x': 300, 'y': 950}, {'x': 150, 'y': 980}, {'x': 0, 'y': 950}
-                ]},
-                'color': '#F44336',
+                'x': 0, 'y': 600,
+                'ancho': 600, 'alto': 600,
+                'color': '#4CAF50',
             },
         )
-        self._log('', 'Zonas externas (sucursal)', 2)
-
-        zona_alm_a, _ = Zona.objects.get_or_create(
-            idalmacen=almacen,
-            codigo=f'Z-ALMA-E{idx+1}',
+        zona_desarrollo, _ = Zona.objects.get_or_create(
+            idsucursal=sucursal,
+            codigo=f'Z-DES-E{idx+1}',
             defaults={
-                'nombre': 'Almacenamiento Alta Rotación',
+                'nombre': 'Zona de Desarrollo',
                 'tipo': 'almacenamiento',
-                'x': 0 + offset_x, 'y': 280 + offset_y,
-                'poligono': {'type': 'polygon', 'points': [
-                    {'x': 0, 'y': 280}, {'x': 800, 'y': 280},
-                    {'x': 800, 'y': 580}, {'x': 0, 'y': 580}
-                ]},
-                'color': '#2196F3',
+                'x': 620, 'y': 600,
+                'ancho': 1560, 'alto': 600,
+                'color': '#1565C0',
             },
         )
-        zona_alm_b, _ = Zona.objects.get_or_create(
-            idalmacen=almacen,
-            codigo=f'Z-ALMB-E{idx+1}',
-            defaults={
-                'nombre': 'Almacenamiento Baja Rotación',
-                'tipo': 'almacenamiento',
-                'x': 820 + offset_x, 'y': 280 + offset_y,
-                'poligono': {'type': 'polygon', 'points': [
-                    {'x': 820, 'y': 280}, {'x': 1400, 'y': 280},
-                    {'x': 1400, 'y': 580}, {'x': 820, 'y': 580}
-                ]},
-                'color': '#9C27B0',
-            },
-        )
-        zona_picking, _ = Zona.objects.get_or_create(
-            idalmacen=almacen,
-            codigo=f'Z-PICK-E{idx+1}',
-            defaults={
-                'nombre': 'Picking',
-                'tipo': 'picking',
-                'x': 0 + offset_x, 'y': 600 + offset_y,
-                'poligono': {'type': 'polygon', 'points': [
-                    {'x': 0, 'y': 600}, {'x': 800, 'y': 600},
-                    {'x': 800, 'y': 780}, {'x': 0, 'y': 780}
-                ]},
-                'color': '#FF9800',
-            },
-        )
-        self._log('', 'Zonas internas (almacén)', 3)
+        self._log('', 'Zonas sucursal', 4)
 
-        estantes = []
-        for codigo, nombre, zona, x, y, rot in [
-            ('E01', 'Estante A1', zona_alm_a, 50, 50, 0),
-            ('E02', 'Estante A2', zona_alm_a, 200, 50, 0),
-            ('E03', 'Estante A3', zona_alm_a, 350, 50, 0),
-            ('E04', 'Estante A4', zona_alm_a, 500, 50, 0),
-            ('E05', 'Estante B1', zona_alm_b, 50, 50, 15),
-            ('E06', 'Estante B2', zona_alm_b, 200, 50, 15),
-            ('E07', 'Estante B3', zona_alm_b, 350, 50, 15),
-            ('E08', 'Estante B4', zona_alm_b, 500, 50, 15),
-        ]:
-            e, _ = Estante.objects.get_or_create(
-                idzona=zona,
-                codigo=f'{codigo}-E{idx+1}',
+        mascaras_config = [
+            (almacenes[0], 620, 0, 760, 400, 'Almacén Norte 1'),
+            (almacenes[1], 1400, 0, 760, 400, 'Almacén Norte 2'),
+            (almacenes[2], 2180, 0, 800, 400, 'Almacén Norte 3'),
+            (almacenes[3], 2200, 600, 780, 600, 'Almacén Sur'),
+        ]
+        for alm, mx, my, mw, mh, mname in mascaras_config:
+            Zona.objects.get_or_create(
+                idsucursal=sucursal,
+                idalmacen=alm,
+                es_mascara=True,
+                codigo=f'MASC-{alm.codigo}',
                 defaults={
-                    'nombre': nombre, 'x': x, 'y': y, 'rotacion': rot,
-                    'ancho': 240, 'alto': 120, 'profundidad': 60, 'cantidadniveles': 3,
+                    'nombre': mname,
+                    'tipo': 'almacenamiento',
+                    'x': mx, 'y': my,
+                    'ancho': mw, 'alto': mh,
+                    'color': '#7B1FA2',
                 },
             )
-            estantes.append(e)
-        self._log('', 'Estantes', len(estantes))
+        self._log('', 'Máscaras almacén (sucursal)', len(mascaras_config))
 
-        niveles = []
-        for estante in estantes:
-            for k in range(1, 4):
-                n, _ = Nivel.objects.get_or_create(
-                    idestante=estante, numero=k,
-                    defaults={'nombre': f'Nivel {k} — {estante.codigo}', 'altura': 40},
-                )
-                niveles.append(n)
-        self._log('', 'Niveles', len(niveles))
-
-        ubicaciones = []
-        for nivel in niveles:
-            for m in range(1, 3):
-                u, _ = Ubicacion.objects.get_or_create(
-                    codigo=f'{nivel.idestante.codigo}-N{nivel.numero}-U{m}',
+        all_estantes = []
+        all_ubicaciones = []
+        for _i, alm in enumerate(almacenes):
+            zona_int, _ = Zona.objects.get_or_create(
+                idalmacen=alm,
+                codigo=f'Z-INT-{alm.codigo}',
+                defaults={
+                    'nombre': f'Zona {alm.nombre}',
+                    'tipo': 'almacenamiento',
+                    'x': 0, 'y': 0,
+                    'ancho': float(alm.ancho or 600),
+                    'alto': float(alm.alto or 400),
+                    'color': '#9C27B0',
+                },
+            )
+            almw = float(alm.ancho or 600)
+            almh = float(alm.alto or 400)
+            num_estantes = 4
+            est_w = min(120, (almw - 60) / num_estantes)
+            est_h = min(80, almh - 40)
+            for col in range(num_estantes):
+                ex = 15 + col * (est_w + 15)
+                ey = 15
+                e, _ = Estante.objects.get_or_create(
+                    idzona=zona_int,
+                    codigo=f'E{col+1}-{alm.codigo}',
                     defaults={
-                        'idnivel': nivel, 'capacidadpeso': 500,
-                        'capacidadvolumen': Decimal('1.50'), 'x': (m - 1) * 60, 'y': 0,
+                        'nombre': f'Estante {col+1} — {alm.nombre}',
+                        'x': ex, 'y': ey, 'rotacion': 0,
+                        'ancho': est_w, 'alto': est_h,
+                        'profundidad': 60, 'cantidadniveles': 3,
                     },
                 )
-                ubicaciones.append(u)
-        self._log('', 'Ubicaciones', len(ubicaciones))
-        self._ubicaciones = ubicaciones
+                all_estantes.append(e)
+                for k in range(1, 4):
+                    n, _ = Nivel.objects.get_or_create(
+                        idestante=e, numero=k,
+                        defaults={'nombre': f'Nivel {k} — {e.codigo}', 'altura': est_h / 3},
+                    )
+                    for m in range(1, 3):
+                        u, _ = Ubicacion.objects.get_or_create(
+                            codigo=f'{e.codigo}-N{k}-U{m}',
+                            defaults={
+                                'idnivel': n,
+                                'capacidadpeso': Decimal('500'),
+                                'capacidadvolumen': Decimal('1.50'),
+                                'x': (m - 1) * 60, 'y': 0,
+                            },
+                        )
+                        all_ubicaciones.append(u)
+        self._log('', 'Zonas internas (almacenes)', len(almacenes))
+        self._log('', 'Estantes', len(all_estantes))
+        self._log('', 'Niveles', len(all_estantes) * 3)
+        self._log('', 'Ubicaciones', len(all_ubicaciones))
+        self._ubicaciones = all_ubicaciones
 
-        bx, by = offset_x, offset_y
         nodos_ext = []
-        for nombre, tipo, cx, cy in [
-            ('N-Puerta-Principal', 'entrada', bx + 50, by + 50),
-            ('N-Puerta-Recepcion', 'esquina', bx + 180, by + 220),
-            ('N-Puerta-Despacho', 'esquina', bx + 100, by + 880),
-            ('N-Salida-Exterior', 'salida', bx + 80, by + 960),
-        ]:
+        nodos_config = [
+            ('N-Entrada-Principal', 'entrada', 50, 100),
+            ('N-Recepcion', 'esquina', 350, 200),
+            ('N-Pasillo-1', 'interseccion', 650, 500),
+            ('N-Pasillo-2', 'interseccion', 1430, 500),
+            ('N-Pasillo-3', 'interseccion', 2210, 500),
+            ('N-Pasillo-4', 'interseccion', 2710, 500),
+            ('N-Despacho', 'esquina', 350, 750),
+            ('N-Salida', 'salida', 100, 1150),
+        ]
+        for nombre, tipo, cx, cy in nodos_config:
             n, _ = self._safe_get_or_create(
                 Nodo,
                 {'idsucursal': sucursal, 'nombre': f'{nombre}-E{idx+1}'},
@@ -527,44 +564,22 @@ class Command(BaseCommand):
             nodos_ext.append(n)
         self._log('', 'Nodos externos (sucursal)', len(nodos_ext))
 
-        nodos_int = []
-        for nombre, tipo, cx, cy, ubic in [
-            ('N-Entrada-Almacen', 'entrada', bx + 20, by + 295, None),
-            ('N-Int-Central', 'interseccion', bx + 200, by + 300, None),
-            ('N-Pick-A1', 'punto_recogida', bx + 80, by + 330, ubicaciones[0] if ubicaciones else None),
-            ('N-Pick-A2', 'punto_recogida', bx + 230, by + 330, ubicaciones[6] if len(ubicaciones) > 6 else None),
-            ('N-Pick-B1', 'punto_recogida', bx + 870, by + 330, ubicaciones[24] if len(ubicaciones) > 24 else None),
-            ('N-Pick-B2', 'punto_recogida', bx + 1020, by + 330, ubicaciones[30] if len(ubicaciones) > 30 else None),
-        ]:
-            n, _ = self._safe_get_or_create(
-                Nodo,
-                {'idalmacen': almacen, 'nombre': f'{nombre}-E{idx+1}'},
-                {'tipo': tipo, 'coordenada_x': cx, 'coordenada_y': cy, 'idubicacion': ubic},
-            )
-            nodos_int.append(n)
-        self._log('', 'Nodos internos (almacén)', len(nodos_int))
-
-        all_nodos = nodos_ext + nodos_int
         conexiones_data = [
-            (0, 1, 200, 400, 'acceso'),
-            (0, 2, 850, 400, 'acceso'),
-            (2, 3, 100, 350, 'acceso'),
-            (1, 4, 80, 350, 'acceso'),
-            (4, 5, 180, 350, 'pasillo'),
-            (5, 6, 130, 350, 'pasillo'),
-            (5, 7, 280, 350, 'pasillo'),
-            (5, 8, 700, 300, 'cruce'),
-            (5, 9, 850, 300, 'cruce'),
-            (6, 7, 150, 250, 'pasillo'),
-            (8, 9, 150, 250, 'pasillo'),
+            (0, 1, 200, 300, 'acceso'),
+            (1, 2, 350, 400, 'pasillo'),
+            (2, 3, 780, 400, 'pasillo'),
+            (3, 4, 780, 400, 'pasillo'),
+            (4, 5, 500, 400, 'pasillo'),
+            (5, 6, 400, 400, 'acceso'),
+            (6, 7, 450, 300, 'acceso'),
         ]
         for oi, di, dist, ancho, tipo in conexiones_data:
             Conexion.objects.get_or_create(
-                idnodoorigen=all_nodos[oi], idnododestino=all_nodos[di],
+                idnodoorigen=nodos_ext[oi], idnododestino=nodos_ext[di],
                 defaults={'distancia': dist, 'ancho': ancho, 'tipo': tipo, 'geometria': {'type': 'line'}},
             )
             Conexion.objects.get_or_create(
-                idnododestino=all_nodos[oi], idnodoorigen=all_nodos[di],
+                idnododestino=nodos_ext[oi], idnodoorigen=nodos_ext[di],
                 defaults={'distancia': dist, 'ancho': ancho, 'tipo': tipo, 'geometria': {'type': 'line'}},
             )
         self._log('', 'Conexiones', len(conexiones_data) * 2)
@@ -634,7 +649,7 @@ class Command(BaseCommand):
         lotes = []
         for sku, num_lote, fp_delta, fv_delta, ci, ca in lotes_data:
             if sku in productos:
-                l, _ = Lote.objects.get_or_create(
+                lote, _ = Lote.objects.get_or_create(
                     idproducto=productos[sku],
                     numero_lote=num_lote,
                     defaults={
@@ -644,7 +659,7 @@ class Command(BaseCommand):
                         'cantidad_actual': ca,
                     },
                 )
-                lotes.append(l)
+                lotes.append(lote)
         self._log('', 'Lotes', len(lotes))
 
         ubicaciones = getattr(self, '_ubicaciones', [])
@@ -660,6 +675,7 @@ class Command(BaseCommand):
             [0, 0, 1, 2, 3, 5, 6, 7, None, None, None, None, None, 8, None, None],
             range(min(16, len(ubicaciones))),
             [5, 10, 100, 200, 80, 150, 250, 100, 50, 200, 100, 150, 120, 300, 30, 15],
+            strict=False,
         ))
         for sku, lote_idx, ubic_idx, cant in inv_pairs:
             if sku in productos and ubic_idx < len(ubicaciones):
@@ -756,7 +772,7 @@ class Command(BaseCommand):
         self.stdout.write('  RESUMEN DE CARGA')
         self.stdout.write('=' * 60)
 
-        self.stdout.write(f'  Portal (public):')
+        self.stdout.write('  Portal (public):')
         self.stdout.write(f'    Empresas: {Empresa.objects.count()}')
         self.stdout.write(f'    Usuarios: {Usuario.objects.filter(tipo_usuario="admin_sistema").count()}')
         self.stdout.write(f'    Permisos: {Permiso.objects.count()}')

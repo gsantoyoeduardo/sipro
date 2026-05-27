@@ -1,22 +1,32 @@
-from rest_framework import viewsets, status
+from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiExample
-from infrastructure.models.layout_model import Zona, Estante, Nivel, Ubicacion, Nodo, Conexion
-from application.dto.layout.zona_dto import ZonaSerializer, ZonaListSerializer
-from application.dto.layout.estante_dto import EstanteSerializer, EstanteListSerializer
-from application.dto.layout.nivel_dto import NivelSerializer
-from application.dto.layout.ubicacion_dto import UbicacionSerializer
-from application.dto.layout.nodo_dto import NodoSerializer, NodoListSerializer
+
 from application.dto.layout.conexion_dto import ConexionSerializer
-from application.dto.layout.ubicacion_dto import CambiarEstadoUbicacionSerializer
+from application.dto.layout.estante_dto import EstanteListSerializer, EstanteSerializer
+from application.dto.layout.nivel_dto import NivelSerializer
+from application.dto.layout.nodo_dto import NodoListSerializer, NodoSerializer
+from application.dto.layout.ubicacion_dto import (
+    CambiarEstadoUbicacionSerializer,
+    UbicacionSerializer,
+)
+from application.dto.layout.zona_dto import ZonaListSerializer, ZonaSerializer
 from application.dto.shared_dto import ToggleEstadoSerializer
-from application.services.layout.layout_service import RutaService
-from application.filters.layout.zona_filter import ZonaFilter
 from application.filters.layout.estante_filter import EstanteFilter
 from application.filters.layout.nivel_filter import NivelFilter
-from application.filters.layout.ubicacion_filter import UbicacionFilter
 from application.filters.layout.nodo_filter import NodoFilter
+from application.filters.layout.ubicacion_filter import UbicacionFilter
+from application.filters.layout.zona_filter import ZonaFilter
+from application.services.layout.layout_service import RutaService
+from infrastructure.models.layout_model import (
+    Conexion,
+    Estante,
+    Nivel,
+    Nodo,
+    Ubicacion,
+    Zona,
+)
 
 
 @extend_schema_view(

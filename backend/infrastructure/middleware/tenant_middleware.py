@@ -1,6 +1,6 @@
 import re
-import uuid
 import threading
+
 from django.db import connection
 
 _local = threading.local()

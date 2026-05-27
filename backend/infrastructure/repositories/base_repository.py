@@ -1,4 +1,5 @@
 from typing import Generic, TypeVar
+
 from django.db import models
 
 T = TypeVar('T', bound=models.Model)

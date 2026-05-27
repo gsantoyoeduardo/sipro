@@ -1,4 +1,5 @@
 from django.urls import path
+
 from portal.controllers.dashboard.views import dashboard_kpis
 
 urlpatterns = [

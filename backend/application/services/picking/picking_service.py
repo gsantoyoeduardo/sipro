@@ -1,6 +1,9 @@
 import uuid
+
 from infrastructure.repositories.picking_repo import (
-    OrdenPickingRepository, DetallePickingRepository, IncidenciaRepository
+    DetallePickingRepository,
+    IncidenciaRepository,
+    OrdenPickingRepository,
 )
 
 orden_repo = OrdenPickingRepository()

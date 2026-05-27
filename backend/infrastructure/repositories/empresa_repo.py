@@ -6,7 +6,9 @@ Django sobre el esquema ``public`` de la base de datos.
 """
 
 import uuid
-from infrastructure.models.empresa_model import Empresa, Sucursal, Almacen
+
+from infrastructure.models.empresa_model import Almacen, Empresa, Sucursal
+
 from .base_repository import BaseRepository
 
 

@@ -1,6 +1,7 @@
 import pytest
 from rest_framework import status
-from infrastructure.middleware.tenant_middleware import get_current_tenant, _valid_uuid
+
+from infrastructure.middleware.tenant_middleware import _valid_uuid, get_current_tenant
 
 
 class TestTenantMiddleware:
@@ -20,6 +21,7 @@ class TestTenantMiddleware:
 
     def test_tenant_guard_rejects_wrong_tenant(self, api_client, admin_empresa, empresa):
         import uuid
+
         from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(admin_empresa)
         access = str(refresh.access_token)

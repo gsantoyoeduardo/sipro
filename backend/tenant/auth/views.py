@@ -1,16 +1,21 @@
 from django.conf import settings
+from django.core.cache import cache
+from django.db import connection
 from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from application.dto.auth_dto import (
+    ChangePasswordSerializer,
+    LogoutSerializer,
+    RefreshTokenSerializer,
+    TenantLoginSerializer,
+)
 from application.services.seguridad.auth_service import AuthService
-from django.core.cache import cache
-from django.db import connection
-from drf_spectacular.utils import extend_schema, OpenApiExample
-from application.dto.auth_dto import TenantLoginSerializer, LogoutSerializer, ChangePasswordSerializer, RefreshTokenSerializer
 
 LOGIN_LIMIT_CACHE_PREFIX = 'login_attempt_'
 
@@ -43,7 +48,8 @@ def _reset_login_rate_limit(ip):
 @permission_classes([AllowAny])
 def tenant_login_view(request):
     ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
-    if ip and ',' in ip: ip = ip.split(',')[0].strip()
+    if ip and ',' in ip:
+        ip = ip.split(',')[0].strip()
     if not settings.DEBUG and not _check_login_rate_limit(ip):
         return Response({'error': 'Demasiados intentos. Intente en 5 minutos.'},
                         status=status.HTTP_429_TOO_MANY_REQUESTS)
@@ -101,7 +107,7 @@ def tenant_refresh_view(request):
         token.check_blacklist()
         new_access = str(token.access_token)
         return Response({'access': new_access})
-    except Exception as e:
+    except Exception:
         return Response({'error': 'Token inválido o expirado'}, status=status.HTTP_401_UNAUTHORIZED)
 
 

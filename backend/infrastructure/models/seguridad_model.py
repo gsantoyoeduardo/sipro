@@ -6,9 +6,15 @@ Utiliza un modelo de usuario personalizado basado en AbstractBaseUser.
 """
 
 import uuid
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
 from django.db import models
 from fernet_fields import EncryptedTextField
+
 from infrastructure.models.base_model import AuditableBaseModel
 
 

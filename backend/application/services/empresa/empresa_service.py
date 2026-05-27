@@ -1,5 +1,10 @@
 import uuid
-from infrastructure.repositories.empresa_repo import EmpresaRepository, SucursalRepository, AlmacenRepository
+
+from infrastructure.repositories.empresa_repo import (
+    AlmacenRepository,
+    EmpresaRepository,
+    SucursalRepository,
+)
 
 empresa_repo = EmpresaRepository()
 sucursal_repo = SucursalRepository()

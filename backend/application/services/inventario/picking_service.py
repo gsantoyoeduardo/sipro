@@ -1,12 +1,13 @@
+import heapq
 import uuid
-from infrastructure.repositories.inventario_repo import InventarioRepository
-from infrastructure.models.inventario_model import Producto
-from infrastructure.models.layout_model import Nodo, Conexion
-from domain.services.routing.models import Parada, Punto
+from collections import defaultdict
+
 from domain.services.routing.factory import RouteOptimizerFactory
 from domain.services.routing.metrics import calcular_tiempo_estimado
-from collections import defaultdict
-import heapq
+from domain.services.routing.models import Parada, Punto
+from infrastructure.models.inventario_model import Producto
+from infrastructure.models.layout_model import Conexion, Nodo
+from infrastructure.repositories.inventario_repo import InventarioRepository
 
 inventario_repo = InventarioRepository()
 

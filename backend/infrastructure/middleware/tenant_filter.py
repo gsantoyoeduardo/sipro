@@ -1,5 +1,6 @@
 from rest_framework.exceptions import PermissionDenied
 
+
 class TenantFilterMixin:
     """
     Mixin base para filtrar querysets por empresa (tenant).
@@ -19,9 +20,8 @@ class TenantFilterMixin:
         if idempresa and self.tenant_field:
             filter_kwargs = {f'{self.tenant_field}': idempresa}
             return qs.filter(**filter_kwargs)
-        if idempresa is None and hasattr(self.request, 'user'):
-            if self.request.user.is_authenticated and self.request.user.tipo_usuario != 'admin_sistema':
-                raise PermissionDenied('No se puede determinar la empresa del usuario')
+        if idempresa is None and hasattr(self.request, 'user') and self.request.user.is_authenticated and self.request.user.tipo_usuario != 'admin_sistema':
+            raise PermissionDenied('No se puede determinar la empresa del usuario')
         return qs
 
 class TenantEmpresaDirectaMixin(TenantFilterMixin):
@@ -47,9 +47,6 @@ class TenantViaEstanteMixin(TenantFilterMixin):
 class TenantViaNivelMixin(TenantFilterMixin):
     """Filtra via: tabla → idnivel → idestante → idzona → idsucursal → idempresa (Ej: Ubicacion)"""
     tenant_field = 'idnivel__idestante__idzona__idsucursal__idempresa'
-
-class TenantViaCategoriaMixin(TenantFilterMixin):
-    tenant_field = 'idcategoria__idempresa'
 
 class TenantViaCategoriaMixin(TenantFilterMixin):
     tenant_field = 'idcategoria__idempresa'

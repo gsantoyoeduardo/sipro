@@ -1,11 +1,16 @@
+import heapq
 import uuid
 from collections import defaultdict
-import heapq
+
+from infrastructure.models.layout_model import Conexion, Nodo
 from infrastructure.repositories.layout_repo import (
-    ZonaRepository, EstanteRepository,
-    NivelRepository, UbicacionRepository, NodoRepository, ConexionRepository,
+    ConexionRepository,
+    EstanteRepository,
+    NivelRepository,
+    NodoRepository,
+    UbicacionRepository,
+    ZonaRepository,
 )
-from infrastructure.models.layout_model import Nodo, Conexion
 
 zona_repo = ZonaRepository()
 estante_repo = EstanteRepository()

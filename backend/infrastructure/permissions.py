@@ -14,6 +14,4 @@ class RolePermission(permissions.BasePermission):
 
         if portal_only and request.user.tipo_usuario != 'admin_sistema':
             return False
-        if tenant_only and request.user.tipo_usuario not in ('admin_empresa', 'operador'):
-            return False
-        return True
+        return not tenant_only or request.user.tipo_usuario in ('admin_empresa', 'operador')
