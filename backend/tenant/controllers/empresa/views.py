@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiExample
 from infrastructure.models.empresa_model import Empresa, Sucursal, Almacen
+from infrastructure.models.layout_model import Zona
 from application.dto.empresa.empresa_dto import EmpresaSerializer
 from application.dto.empresa.sucursal_dto import SucursalSerializer, SucursalListSerializer
 from application.dto.empresa.almacen_dto import AlmacenSerializer
@@ -118,7 +119,22 @@ class AlmacenViewSet(viewsets.ModelViewSet):
         if idempresa and idsucursal and str(idsucursal.idempresa_id) != str(idempresa):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Sucursal no pertenece a tu empresa')
-        serializer.save()
+        almacen = serializer.save()
+
+        # Auto-crear zona máscara visual del almacén en el plano de la sucursal
+        Zona.objects.create(
+            idsucursal=idsucursal,
+            idalmacen=almacen,
+            nombre=almacen.nombre,
+            codigo=f'MASC-{almacen.codigo}',
+            tipo='almacenamiento',
+            x=0,
+            y=0,
+            ancho=float(almacen.ancho or 600),
+            alto=float(almacen.alto or 400),
+            color='#1E3A5F',
+            es_mascara=True,
+        )
 
     @action(detail=True, methods=['patch'], url_path='estado')
     def toggle_estado(self, request, pk=None):

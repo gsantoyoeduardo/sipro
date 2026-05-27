@@ -1,14 +1,14 @@
 ﻿/**
- * Componente de Layout principal de la aplicaci\u00f3n.
- * Renderiza un sidebar de navegaci\u00f3n con grupos de men\u00fa, un header superior
- * con informaci\u00f3n del usuario y bot\u00f3n de cierre de sesi\u00f3n, y un \u00e1rea
+ * Componente de Layout principal de la aplicación.
+ * Renderiza un sidebar de navegación con grupos de menú, un header superior
+ * con información del usuario y botón de cierre de sesión, y un área
  * de contenido donde se renderizan las rutas hijas mediante <Outlet />.
  */
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 
-// Grupos de navegaci\u00f3n del men\u00fa lateral con sus rutas e iconos SVG
+// Grupos de navegación del menú lateral con sus rutas e iconos SVG
 const gruposMenu = [
   {
     label: 'Principal',
@@ -17,7 +17,7 @@ const gruposMenu = [
     ],
   },
   {
-    label: 'Configuraci\u00f3n',
+    label: 'Configuración',
     items: [
       { label: 'Empresas', path: '/empresas', icon: BuildingIcon },
       { label: 'Sucursales', path: '/sucursales', icon: StoreIcon },
@@ -39,16 +39,6 @@ const gruposMenu = [
   },
 ]
 
-// Obtiene las iniciales del nombre del usuario (m\u00e1ximo 2 caracteres)
-function getInitials(nombre: string): string {
-  return nombre
-    .split(' ')
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-}
-
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const navigate = useNavigate()
@@ -56,11 +46,9 @@ export default function Layout() {
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const userName = user ? `${user.nombres} ${user.apellidos}` : 'Usuario'
-  const initials = getInitials(user?.nombres || 'U')
-  // Determina si el usuario es admin_sistema (ve la secci\u00f3n Empresas)
   const esAdminSistema = user?.tipo_usuario === 'admin_sistema'
 
-  // Filtra los items del men\u00fa seg\u00fan el tipo de usuario
+  // Filtra los items del menú según el tipo de usuario
   const menuFiltrado = gruposMenu.map((grupo) => ({
     ...grupo,
     items: grupo.items.filter((item) => {
@@ -69,7 +57,7 @@ export default function Layout() {
     }),
   }))
 
-  // Determina la etiqueta de la p\u00e1gina actual para mostrar en el header
+  // Determina la etiqueta de la página actual para mostrar en el header
   const paginaActual = gruposMenu
     .flatMap((g) => g.items)
     .find((item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))
@@ -77,28 +65,28 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Overlay para cerrar sidebar en m\u00f3vil */}
+      {/* Overlay para cerrar sidebar en móvil */}
       {mobileOpen && (
         <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Sidebar de navegaci\u00f3n */}
+      {/* Sidebar de navegación */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 bg-slate-900 text-white flex flex-col w-72 transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed lg:static inset-y-0 left-0 z-30 bg-barra-lateral text-white flex flex-col w-64 transition-all duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-center h-20 px-6 border-b border-slate-700/50">
-          <img src="/logoborde.png" alt="SIPRO" className="h-12" />
+        <div className="flex items-center justify-center h-16 px-4 border-b border-white/10 shrink-0">
+          <img src="/sipro.png" alt="SIPRO" className="h-10 max-w-[140px] object-contain brightness-0 invert" />
         </div>
 
-        {/* Men\u00fa de navegaci\u00f3n con grupos e items */}
-        <nav className="flex-1 py-6 px-3 overflow-y-auto space-y-6">
+        {/* Menú de navegación con grupos e items */}
+        <nav className="flex-1 py-4 px-2 overflow-y-auto space-y-6">
           {menuFiltrado.map((grupo) => (
             <div key={grupo.label}>
-              <p className="px-4 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/40">
                 {grupo.label}
               </p>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {grupo.items.map((item) => {
                   const isActive = location.pathname === item.path
                     || (item.path !== '/' && location.pathname.startsWith(item.path + '/'))
@@ -109,15 +97,12 @@ export default function Layout() {
                         navigate(item.path)
                         setMobileOpen(false)
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-all duration-200 group ${isActive ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 ${isActive ? 'bg-accion text-white border-l-2 border-accion rounded-l-none' : 'text-white/70 hover:bg-barra-lateral-hover hover:text-white'}`}
                     >
-                      <span className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'}`}>
+                      <span className="w-5 h-5 flex-shrink-0">
                         <item.icon />
                       </span>
                       <span className="font-medium truncate">{item.label}</span>
-                      {isActive && (
-                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />
-                      )}
                     </button>
                   )
                 })}
@@ -126,26 +111,18 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Secci\u00f3n inferior con datos del usuario */}
-        <div className="border-t border-slate-700/50 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
-              {initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-200 truncate">{userName}</p>
-              <p className="text-xs text-slate-500 truncate">{user?.correo}</p>
-            </div>
-          </div>
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-white/10 text-xs text-white/40 text-center shrink-0">
+          SIPRO WMS v2.0
         </div>
       </aside>
 
-      {/* \u00c1rea principal de contenido */}
+      {/* Área principal de contenido */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header superior con t\u00edtulo de p\u00e1gina y opciones de usuario */}
+        {/* Header superior con título de página y opciones de usuario */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
           <div className="flex items-center gap-4">
-            {/* Bot\u00f3n de men\u00fa hamburguesa para m\u00f3vil */}
+            {/* Botón de menú hamburguesa para móvil */}
             <button
               onClick={() => setMobileOpen(true)}
               className="lg:hidden text-gray-500 hover:text-gray-700"
@@ -156,7 +133,7 @@ export default function Layout() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500 hidden sm:block">{userName}</span>
-            {/* Bot\u00f3n de cierre de sesi\u00f3n */}
+            {/* Botón de cierre de sesión */}
             <button
               onClick={() => logout()}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 font-medium transition-colors"
@@ -167,7 +144,7 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Contenido de la p\u00e1gina (rutas hijas) */}
+        {/* Contenido de la página (rutas hijas) */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <Outlet />
         </main>

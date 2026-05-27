@@ -1,9 +1,4 @@
-﻿/**
- * P\u00e1gina de inicio de sesi\u00f3n (Login).
- * Autentica al usuario mediante RUC de empresa, usuario y contrase\u00f1a.
- * Al \u00e9xito, almacena tokens y datos del usuario en el store y redirige al dashboard.
- */
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import { useAuthStore } from '../store/authStore'
@@ -11,27 +6,27 @@ import { useSubmit } from '../hooks/useSubmit'
 import { validateRequired, validateMinLength } from '../utils/validators'
 
 export default function LoginPage() {
-  // Estado de los campos del formulario
   const [ruc, setRuc] = useState('')
   const [usuario, setUsuario] = useState('')
   const [password, setPassword] = useState('')
-  // Errores de validaci\u00f3n por campo
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const navigate = useNavigate()
-  // Obtiene la funci\u00f3n setAuth del store de autenticaci\u00f3n
   const setAuth = useAuthStore((state) => state.setAuth)
 
-  // Funci\u00f3n que realiza la petici\u00f3n de login a la API
   const handleLogin = async () => {
-    const res = await api.post('/tenant/auth/', { ruc, usuario, password })
-    setAuth(res.data.user, res.data.access, res.data.refresh, res.data.tenant_id || '')
-    return true
+    const payload = { ruc, usuario, password }
+    try {
+      const res = await api.post('/tenant/auth/', payload)
+      setAuth(res.data.user, res.data.access, res.data.refresh, res.data.user.idempresa)
+      return true
+    } catch (err: any) {
+      console.error('[LOGIN] Error:', err.response?.data || err.message)
+      throw err
+    }
   }
 
-  // Hook que maneja el env\u00edo con estado de carga y error
   const { submit: doLogin, isSubmitting, error } = useSubmit(handleLogin)
 
-  // Valida los campos del formulario antes de enviar
   const validate = (): boolean => {
     const errors: Record<string, string> = {}
     const r = validateRequired(ruc, 'RUC') || validateMinLength(ruc, 11, 'RUC')
@@ -44,7 +39,6 @@ export default function LoginPage() {
     return Object.keys(errors).length === 0
   }
 
-  // Maneja el env\u00edo del formulario: valida, autentica y redirige
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
@@ -53,68 +47,131 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      {/* Formulario de inicio de sesi\u00f3n */}
-      <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-xl shadow-lg w-full max-w-sm sm:max-w-md">
-        {/* Logo de la aplicaci\u00f3n */}
-        <div className="flex justify-center mb-4 sm:mb-6">
-          <img src="/logo.png" alt="SIPRO" className="h-24 sm:h-32" />
+    <div className="min-h-screen flex bg-fondo">
+      {/* Left panel - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primario-mas-oscuro via-primario-oscuro to-primario flex-col items-center justify-center p-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-accion rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-primario-claro rounded-full blur-3xl" />
         </div>
-        {/* Mensaje de error del servidor */}
-        {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>
-        )}
-        {/* Campo RUC de la empresa */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">RUC de la Empresa</label>
-          <input
-            type="text"
-            value={ruc}
-            onChange={(e) => { setRuc(e.target.value); setFieldErrors((p) => ({ ...p, ruc: '' })) }}
-            className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.ruc ? 'border-red-500' : 'border-gray-300'}`}
-            required
-          />
-          {fieldErrors.ruc && <p className="text-red-500 text-xs mt-1">{fieldErrors.ruc}</p>}
+        <div className="relative z-10 text-center">
+          <img src="/sipro.png" alt="SIPRO" className="h-20 mx-auto mb-8 brightness-0 invert" />
+          <p className="text-white/70 text-lg max-w-md">Sistema integral de gestión de almacenes. Controla tu inventario, picking y transferencias desde un solo lugar.</p>
+          <div className="mt-12 grid grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-3xl font-bold text-accion">99.9%</div>
+              <div className="text-white/50 text-sm mt-1">Uptime</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-accion">24/7</div>
+              <div className="text-white/50 text-sm mt-1">Disponible</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-accion">100%</div>
+              <div className="text-white/50 text-sm mt-1">Seguro</div>
+            </div>
+          </div>
         </div>
-        {/* Campo de usuario */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
-          <input
-            type="text"
-            value={usuario}
-            onChange={(e) => { setUsuario(e.target.value); setFieldErrors((p) => ({ ...p, usuario: '' })) }}
-            className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.ruc ? 'border-red-500' : 'border-gray-300'}`}
-            required
-          />
-          {fieldErrors.usuario && <p className="text-red-500 text-xs mt-1">{fieldErrors.usuario}</p>}
-        </div>
-        {/* Campo de contrase\u00f1a */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: '' })) }}
-            className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.ruc ? 'border-red-500' : 'border-gray-300'}`}
-            required
-          />
-          {fieldErrors.password && <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>}
-        </div>
-        {/* Bot\u00f3n de env\u00edo con indicador de carga */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
-        >
-          {isSubmitting && (
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
+      </div>
+
+      {/* Right panel - Login form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-md animate-fade-in">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex justify-center mb-8">
+            <img src="/sipro.png" alt="SIPRO" className="h-14" />
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-texto">Bienvenido</h2>
+            <p className="text-texto-secundario mt-2">Ingresa tus credenciales para acceder al sistema</p>
+          </div>
+
+          {error && (
+            <div className="bg-peligro-suave text-peligro-texto p-4 rounded-xl mb-6 text-sm flex items-center gap-3">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {error}
+            </div>
           )}
-          {isSubmitting ? 'Ingresando...' : 'Ingresar'}
-        </button>
-      </form>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-texto mb-2">RUC de la Empresa</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-texto-secundario" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={ruc}
+                  onChange={(e) => { setRuc(e.target.value); setFieldErrors((p) => ({ ...p, ruc: '' })) }}
+                  placeholder="20123456789"
+                  className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accion focus:border-transparent text-sm transition ${fieldErrors.ruc ? 'border-peligro' : 'border-borde'}`}
+                />
+              </div>
+              {fieldErrors.ruc && <p className="text-peligro text-xs mt-1.5">{fieldErrors.ruc}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-texto mb-2">Usuario</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-texto-secundario" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={usuario}
+                  onChange={(e) => { setUsuario(e.target.value); setFieldErrors((p) => ({ ...p, usuario: '' })) }}
+                  placeholder="tu-usuario"
+                  className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accion focus:border-transparent text-sm transition ${fieldErrors.usuario ? 'border-peligro' : 'border-borde'}`}
+                />
+              </div>
+              {fieldErrors.usuario && <p className="text-peligro text-xs mt-1.5">{fieldErrors.usuario}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-texto mb-2">Contraseña</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-texto-secundario" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: '' })) }}
+                  placeholder="••••••••"
+                  className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accion focus:border-transparent text-sm transition ${fieldErrors.password ? 'border-peligro' : 'border-borde'}`}
+                />
+              </div>
+              {fieldErrors.password && <p className="text-peligro text-xs mt-1.5">{fieldErrors.password}</p>}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-accion text-white py-3 rounded-xl hover:bg-accion-hover transition disabled:opacity-50 flex items-center justify-center gap-2 font-semibold text-sm shadow-lg shadow-accion/25"
+            >
+              {isSubmitting && (
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              )}
+              {isSubmitting ? 'Ingresando...' : 'Ingresar'}
+            </button>
+          </form>
+
+          <p className="text-center text-texto-secundario text-xs mt-8">v2.0 &copy; 2026</p>
+        </div>
+      </div>
     </div>
   )
 }

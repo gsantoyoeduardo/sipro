@@ -19,10 +19,13 @@ class Zona(AuditableBaseModel):
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     x = models.FloatField(default=0)
     y = models.FloatField(default=0)
-    poligono = models.JSONField(null=True, blank=True)
+    ancho = models.FloatField(default=100)
+    alto = models.FloatField(default=80)
+    poligono = models.JSONField(null=True, blank=True, help_text='Forma: {"tipo":"poligono","puntos":[[x,y],...]} o {"tipo":"circulo","centro":[x,y],"radio":r}')
     z_base = models.FloatField(default=0)
     z_techo = models.FloatField(null=True, blank=True)
     color = models.CharField(max_length=7, null=True, blank=True)
+    es_mascara = models.BooleanField(default=False, help_text='Indica si es la zona visual de un almacén')
 
     class Meta:
         app_label = 'layout'

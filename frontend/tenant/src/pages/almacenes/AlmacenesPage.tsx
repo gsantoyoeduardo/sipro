@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import DataTable from '../../components/DataTable'
 import Modal from '../../components/Modal'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import LayoutWizard from '../../components/dedicated/LayoutWizard'
 import { almacenService, sucursalService } from '../../api/empresa'
 import { useSubmit } from '../../hooks/useSubmit'
 import { useToastStore } from '../../store/toastStore'
@@ -35,6 +36,8 @@ export default function AlmacenesPage() {
   // Confirmaciones para eliminar o activar/desactivar almac\u00e9n
   const [confirmDelete, setConfirmDelete] = useState<Almacen | null>(null)
   const [confirmToggle, setConfirmToggle] = useState<Almacen | null>(null)
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [wizardAlmacen, setWizardAlmacen] = useState<Almacen | null>(null)
 
   // Carga inicial de almacenes y sucursales desde la API
   const fetchData = async () => {
@@ -143,12 +146,24 @@ export default function AlmacenesPage() {
     </>
   )
 
+  const handleOpenWizard = () => {
+    if (filtered.length > 0) {
+      setWizardAlmacen(filtered[0])
+      setWizardOpen(true)
+    } else {
+      addToast('error', 'Crea un almacén primero')
+    }
+  }
+
   return (
     <div>
       {/* Encabezado con t\u00edtulo y bot\u00f3n de nuevo almac\u00e9n */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Almacenes</h1>
-        <button onClick={handleOpenCreate} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Nuevo Almac\u00e9n</button>
+        <div className="flex gap-3">
+          <button onClick={handleOpenWizard} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">Crear Layout</button>
+          <button onClick={handleOpenCreate} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Nuevo Almacén</button>
+        </div>
       </div>
       {/* Filtro por sucursal */}
       <div className="mb-4">
@@ -224,6 +239,19 @@ export default function AlmacenesPage() {
       {/* Di\u00e1logos de confirmaci\u00f3n para eliminar y activar/desactivar almac\u00e9n */}
       <ConfirmDialog isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={() => handleDeleteConfirm()} title="Eliminar Almacén" message={`¿Está seguro de eliminar "${confirmDelete?.nombre}"?`} confirmLabel="Eliminar" confirmVariant="danger" isLoading={deleting} />
       <ConfirmDialog isOpen={!!confirmToggle} onClose={() => setConfirmToggle(null)} onConfirm={() => handleToggleConfirm()} title={confirmToggle?.estado ? 'Desactivar Almacén' : 'Activar Almacén'} message={`¿Está seguro de ${confirmToggle?.estado ? 'desactivar' : 'activar'} "${confirmToggle?.nombre}"?`} confirmLabel={confirmToggle?.estado ? 'Desactivar' : 'Activar'} confirmVariant="primary" isLoading={toggling} />
+
+      {wizardOpen && wizardAlmacen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <LayoutWizard
+              idalmacen={wizardAlmacen.idalmacen}
+              idsucursal={wizardAlmacen.idsucursal}
+              onComplete={() => { setWizardOpen(false); setWizardAlmacen(null) }}
+              onCancel={() => { setWizardOpen(false); setWizardAlmacen(null) }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

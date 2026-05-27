@@ -51,6 +51,8 @@ export interface Sucursal {
   codigo: string
   direccion: string | null
   telefono: string | null
+  ancho_plano: number
+  alto_plano: number
   fechacreacion: string
   estado: boolean
   empresa?: Empresa
@@ -96,9 +98,15 @@ export interface ApiListResponse<T> {
   results: T[]
 }
 
+export type FormaZona =
+  | null
+  | { tipo: 'poligono'; puntos: [number, number][] }
+  | { tipo: 'circulo'; centro: [number, number]; radio: number }
+
 export interface Zona {
   idzona: string
-  idalmacen: string
+  idsucursal: string | null
+  idalmacen: string | null
   nombre: string
   codigo: string
   tipo: 'recepcion' | 'almacenamiento' | 'despacho' | 'picking' | 'devoluciones'
@@ -106,51 +114,26 @@ export interface Zona {
   y: number
   ancho: number
   alto: number
+  poligono: FormaZona
+  z_base: number
+  z_techo: number | null
   color: string | null
   estado: boolean
-  pasillos?: PasilloSummary[]
-  pasillos_count?: number
-}
-
-export interface PasilloSummary {
-  idpasillo: string
-  idzona: string
-  nombre: string
-  codigo: string
-  x: number
-  y: number
-  ancho: number
-  largo: number
-  orientacion: string
-  estado: boolean
-  estantes_count?: number
-}
-
-export interface Pasillo {
-  idpasillo: string
-  idzona: string
-  nombre: string
-  codigo: string
-  x: number
-  y: number
-  ancho: number
-  largo: number
-  orientacion: 'horizontal' | 'vertical'
-  estado: boolean
-  estantes?: EstanteSummary[]
+  es_mascara: boolean
   estantes_count?: number
 }
 
 export interface EstanteSummary {
   idestante: string
-  idpasillo: string
+  idzona: string
   nombre: string
   codigo: string
   x: number
   y: number
+  z_base: number
   ancho: number
   alto: number
-  lado: string
+  profundidad: number
   cantidadniveles: number
   estado: boolean
   niveles_count?: number
@@ -158,15 +141,16 @@ export interface EstanteSummary {
 
 export interface Estante {
   idestante: string
-  idpasillo: string
+  idzona: string
   nombre: string
   codigo: string
   x: number
   y: number
+  z_base: number
+  rotacion: number
   ancho: number
   alto: number
   profundidad: number
-  lado: 'izquierda' | 'derecha'
   cantidadniveles: number
   estado: boolean
   niveles?: Nivel[]

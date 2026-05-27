@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('layout', '0002_fix_unique_constraints'),
+        ('layout', '0002_alter_zona_unique_together_nodo_idalmacen_and_more'),
     ]
 
     operations = [

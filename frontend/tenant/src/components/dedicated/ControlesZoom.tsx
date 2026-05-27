@@ -1,11 +1,11 @@
-interface ZoomControlsProps {
+interface ControlesZoomProps {
   scale: number
   onZoomIn: () => void
   onZoomOut: () => void
   onReset: () => void
 }
 
-export default function ZoomControls({ scale, onZoomIn, onZoomOut, onReset }: ZoomControlsProps) {
+export default function ControlesZoom({ scale, onZoomIn, onZoomOut, onReset }: ControlesZoomProps) {
   return (
     <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-white rounded-lg border shadow-sm px-2 py-1">
       <button onClick={onZoomOut} className="px-2 py-1 text-sm font-bold hover:bg-gray-100 rounded">−</button>
